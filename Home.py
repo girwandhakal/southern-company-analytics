@@ -1,38 +1,43 @@
+import os
+import sys
+
 import streamlit as st
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
+from src.data_loader import load_data
+from src.dashboard_chatbot import render_dashboard_chatbot
 
 st.set_page_config(page_title="Analytics Dashboard", page_icon="📊", layout="wide")
 
-# Inject custom CSS for executive styling
-st.markdown("""
-    <style>
-    /* Clean up the main content area */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    
-    /* Make metrics look more premium */
-    [data-testid="stMetricValue"] {
-        font-size: 2.5rem;
-        font-weight: 600;
-        color: #1E3A8A; /* Dark blue */
-    }
-    
-    /* Style headers */
-    h1, h2, h3 {
-        color: #0F172A; /* Slate 900 */
-        font-weight: 700;
-    }
-    
-    /* Subtle borders for containers */
-    div[data-testid="stVerticalBlock"] > div {
-        border-radius: 8px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+DATA_PATH = os.path.join(os.path.dirname(__file__), "dataset", "dashboard_master_data.csv")
+home_df = load_data(DATA_PATH)
 
-st.title("Enterprise Fleet Analytics")
-st.markdown("""
+main = render_dashboard_chatbot(page_title="Dashboard Home", df=home_df)
+
+with main:
+    st.markdown("""
+        <style>
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #1E3A8A;
+        }
+        h1, h2, h3 {
+            color: #0F172A;
+            font-weight: 700;
+        }
+        div[data-testid="stVerticalBlock"] > div {
+            border-radius: 8px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.title("Enterprise Fleet Analytics")
+    st.markdown("""
 ---
 ### Welcome to the Executive Dashboard
 This platform provides strategic insights into fleet lifecycle status, risk exposure, consolidation opportunities, and cost optimizations.
