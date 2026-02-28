@@ -40,7 +40,7 @@ This platform provides strategic insights into fleet lifecycle status, risk expo
 **Navigate using the sidebar to explore:**
 - **Overview:** High-level executive KPIs
 - **Risk & Geography:** Geographic exposure and EoL tracking
-- **Radius Bundling:** Strategic site consolidation
+- **Lifecycle & Asset Health:** Aging infrastructure and overdue assets
 - **Exceptions:** In-production lifecycle overrides
 - **Cost & Security:** Financial impact and security posture
 """)
