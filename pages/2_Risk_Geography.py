@@ -178,95 +178,12 @@ else:
     deck = pdk.Deck(
         layers=[col_layer, scatter_layer],
         initial_view_state=view,
-        map_style="mapbox://styles/mapbox/dark-v10",
+        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
         tooltip=tooltip,
     )
     st.pydeck_chart(deck, use_container_width=True)
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  GEOGRAPHIC RISK SUMMARY CHARTS
-# ═══════════════════════════════════════════════════════════════════════════
-st.markdown("---")
-st.subheader("Geographic Risk Summary")
 
-high_risk_mask = df_filtered["Risk_Level"].isin(
-    ["Critical (Past EoL)", "High (Near EoL)"]
-)
-hr_df = df_filtered[high_risk_mask]
-
-left, right = st.columns(2)
-
-# Left: High-risk devices by State
-with left:
-    st.markdown("**High-Risk Devices by State**")
-    if hr_df.empty:
-        st.info("No high-risk devices found for the selected filters.")
-    else:
-        state_counts = (
-            hr_df.groupby("State")
-            .size()
-            .reset_index(name="Count")
-            .sort_values("Count", ascending=True)
-        )
-        fig_state = px.bar(
-            state_counts,
-            x="Count",
-            y="State",
-            orientation="h",
-            text="Count",
-            color_discrete_sequence=["#e74c3c"],
-        )
-        fig_state.update_traces(
-            textposition="outside", textfont_size=13, marker_line_width=0
-        )
-        fig_state.update_layout(
-            showlegend=False,
-            xaxis_title="High-Risk Device Count",
-            yaxis_title=None,
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=20, r=40, t=10, b=40),
-            height=450,
-            font=dict(family="Inter, sans-serif"),
-        )
-        st.plotly_chart(fig_state, use_container_width=True, config=PLOTLY_CLEAN)
-
-# Right: High-risk devices by County (top 15)
-with right:
-    st.markdown("**High-Risk Devices by County (Top 15)**")
-    if hr_df.empty:
-        st.info("No high-risk devices found for the selected filters.")
-    else:
-        county_counts = (
-            hr_df.groupby("PhysicalAddressCounty")
-            .size()
-            .reset_index(name="Count")
-            .sort_values("Count", ascending=False)
-            .head(15)
-            .sort_values("Count", ascending=True)
-        )
-        fig_county = px.bar(
-            county_counts,
-            x="Count",
-            y="PhysicalAddressCounty",
-            orientation="h",
-            text="Count",
-            color_discrete_sequence=["#f39c12"],
-        )
-        fig_county.update_traces(
-            textposition="outside", textfont_size=13, marker_line_width=0
-        )
-        fig_county.update_layout(
-            showlegend=False,
-            xaxis_title="High-Risk Device Count",
-            yaxis_title=None,
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=20, r=40, t=10, b=40),
-            height=450,
-            font=dict(family="Inter, sans-serif"),
-        )
-        st.plotly_chart(fig_county, use_container_width=True, config=PLOTLY_CLEAN)
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  RISK CLUSTERING INSIGHT TABLE
