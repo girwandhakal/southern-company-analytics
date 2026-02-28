@@ -41,6 +41,6 @@ This platform provides strategic insights into fleet lifecycle status, risk expo
 - **Overview:** High-level executive KPIs
 - **Risk & Geography:** Geographic exposure and EoL tracking
 - **Lifecycle & Asset Health:** Aging infrastructure and overdue assets
-- **Exceptions:** In-production lifecycle overrides
 - **Cost & Security:** Financial impact and security posture
+- **Investment Prioritization:** Data-driven replacement roadmap
 """)
