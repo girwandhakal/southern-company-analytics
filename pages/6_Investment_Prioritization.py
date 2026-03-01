@@ -57,11 +57,17 @@ k3.metric("Critical Debt Cleared", f"{pct_cleared:.1f}%")
 
 if devices_in_budget > 0:
     actual_spend = priority_df.loc[: devices_in_budget - 1, "Total_Replacement_Cost"].sum()
-    st.success(
-        f"With a budget of {fmt_currency(budget)}, you can fully replace the top "
-        f"{devices_in_budget:,} highest-risk devices (actual cost "
-        f"{fmt_currency(actual_spend)}), completely clearing "
-        f"{pct_cleared:.1f}% of critical technical debt."
+    summary_text = (
+        f"With a budget of <b>{fmt_currency(budget)}</b>, you can fully replace the top "
+        f"<b>{devices_in_budget:,}</b> highest-risk devices (actual cost "
+        f"<b>{fmt_currency(actual_spend)}</b>), completely clearing "
+        f"<b>{pct_cleared:.1f}%</b> of critical technical debt."
+    )
+    st.markdown(
+        f"<div style='background:#d4edda; border:1px solid #b7dfb9; border-radius:8px; "
+        f"padding:14px 18px; font-family:Inter,sans-serif; font-size:15px; "
+        f"color:#1a1f36; line-height:1.6;'>✅ {summary_text}</div>",
+        unsafe_allow_html=True,
     )
 else:
     st.warning(
