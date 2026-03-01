@@ -214,6 +214,10 @@ def _inject_toggle_css() -> None:
                 -webkit-text-fill-color: #6B7B8D !important;
                 opacity: 1 !important;
             }
+            /* Hide the "Press Enter to submit form" text */
+            div[class*="st-key-spark-input-"] [data-testid="InputInstructions"] {
+                display: none !important;
+            }
         </style>
         """,
         unsafe_allow_html=True,
