@@ -41,6 +41,56 @@ def get_placeholder_data() -> pd.DataFrame:
     }
     return pd.DataFrame(data)
 
+def apply_global_filters(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Renders sidebar multiselect filters for State and Device Type,
+    then returns a filtered copy of the dataframe.
+    Empty selections mean 'show all'.
+    """
+    st.sidebar.markdown(
+        "<h3 style='margin-bottom: 4px;'>⚙️ Global Controls</h3>",
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown(
+        "<p style='font-size: 0.72rem; color: #64748B !important; "
+        "font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; "
+        "margin-bottom: 12px;'>Filter across all pages</p>",
+        unsafe_allow_html=True,
+    )
+
+    if "State" in df.columns:
+        all_states = sorted(df["State"].dropna().unique().tolist())
+        selected_states = st.sidebar.multiselect(
+            "State",
+            options=all_states,
+            default=[],
+            help="Leave empty to show all states.",
+        )
+    else:
+        selected_states = []
+
+    if "Device Type" in df.columns:
+        all_device_types = sorted(df["Device Type"].dropna().unique().tolist())
+        selected_device_types = st.sidebar.multiselect(
+            "Device Type",
+            options=all_device_types,
+            default=[],
+            help="Leave empty to show all device types.",
+        )
+    else:
+        selected_device_types = []
+
+    filtered_df = df.copy()
+
+    if selected_states:
+        filtered_df = filtered_df[filtered_df["State"].isin(selected_states)]
+
+    if selected_device_types:
+        filtered_df = filtered_df[filtered_df["Device Type"].isin(selected_device_types)]
+
+    return filtered_df
+
+
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     A pure function to clean and preprocess the input data.
