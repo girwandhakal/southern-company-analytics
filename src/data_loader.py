@@ -3,6 +3,8 @@ import pandas as pd
 import streamlit as st
 from typing import Optional
 
+_LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "southern-company-logo-0.png")
+
 @st.cache_data
 def load_data(file_path: Optional[str] = None) -> pd.DataFrame:
     """
@@ -88,7 +90,44 @@ def apply_global_filters(df: pd.DataFrame) -> pd.DataFrame:
     if selected_device_types:
         filtered_df = filtered_df[filtered_df["Device Type"].isin(selected_device_types)]
 
+    render_sidebar_logo()
     return filtered_df
+
+
+def render_sidebar_logo():
+    """Renders the Southern Company logo centered in the remaining sidebar space."""
+    import base64
+    st.sidebar.markdown("---")
+    with open(_LOGO_PATH, "rb") as f:
+        logo_b64 = base64.b64encode(f.read()).decode()
+    st.sidebar.markdown(
+        f"""
+        <style>
+        /* Flex layout so the logo fills remaining sidebar height */
+        section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {{
+            display: flex !important;
+            flex-direction: column !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stSidebarContent"] > div {{
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }}
+        .sidebar-logo-wrap {{
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }}
+        </style>
+        <div class="sidebar-logo-wrap">
+            <img src="data:image/png;base64,{logo_b64}" width="180" />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:

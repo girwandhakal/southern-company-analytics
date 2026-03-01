@@ -3,9 +3,11 @@ import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 from src.theme import inject_theme_css, COLORS
+from src.data_loader import render_sidebar_logo
 
 st.set_page_config(page_title="Southern Company Analytics", page_icon="⚡", layout="wide")
 inject_theme_css()
+render_sidebar_logo()
 
 # ── Additional Home-specific CSS ─────────────────────────────────────────────
 st.markdown("""

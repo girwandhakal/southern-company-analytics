@@ -5,6 +5,7 @@ import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.data_loader import load_data
+from src.data_loader import render_sidebar_logo
 from src.dashboard_chatbot import render_dashboard_chatbot
 from src.theme import (
     inject_theme_css, page_header, section_divider, fmt_currency,
@@ -13,6 +14,7 @@ from src.theme import (
 
 st.set_page_config(page_title="Executive Overview", page_icon="📈", layout="wide")
 inject_theme_css()
+render_sidebar_logo()
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "dataset", "dashboard_master_data.csv")
 df = load_data(DATA_PATH)
