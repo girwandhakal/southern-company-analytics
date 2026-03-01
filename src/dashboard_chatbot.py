@@ -17,11 +17,9 @@ load_dotenv(override=True)
 OPEN_KEY = "spark_chat_open"
 
 
-def _resolve_gemini_api_key() -> Optional[str]:
+def _resolve_openai_api_key() -> Optional[str]:
     return (
-        os.getenv("GOOGLE_GEMINI_API_KEY")
-        or os.getenv("GEMINI_API_KEY")
-        or os.getenv("GOOGLE_API_KEY")
+        os.getenv("OPENAI_API_KEY")
     )
 
 
@@ -62,73 +60,63 @@ def _build_dashboard_context(df: Optional[pd.DataFrame], page_title: str) -> str
 
 
 @st.cache_resource(show_spinner=False)
-def _get_gemini_model() -> Any:
-    import google.generativeai as genai
+def _get_openai_client() -> Any:
+    try:
+        from openai import OpenAI
+    except ImportError:
+        return None
 
-    api_key = _resolve_gemini_api_key()
+    api_key = _resolve_openai_api_key()
     if not api_key:
         return None
 
-    genai.configure(api_key=api_key)
-
-    preferred_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-flash-latest",
-        "gemini-pro-latest",
-    ]
-    available: List[str] = []
-
-    try:
-        for model in genai.list_models():
-            methods = getattr(model, "supported_generation_methods", [])
-            if "generateContent" in methods:
-                name = getattr(model, "name", "")
-                if name.startswith("models/"):
-                    name = name.split("models/", 1)[1]
-                if name:
-                    available.append(name)
-    except Exception:
-        return genai.GenerativeModel("gemini-2.0-flash")
-
-    for name in preferred_models:
-        if name in available:
-            return genai.GenerativeModel(name)
-
-    if available:
-        return genai.GenerativeModel(available[0])
-
-    return genai.GenerativeModel("gemini-2.0-flash")
+    return OpenAI(api_key=api_key)
 
 
 def _generate_reply(prompt: str, context: str, history: List[Dict[str, str]]) -> str:
-    model = _get_gemini_model()
-    if model is None:
+    client = _get_openai_client()
+    if client is None:
         return (
-            "Gemini API key is not configured. Add `GOOGLE_GEMINI_API_KEY` in `.env.local` "
-            "or `.env` and restart Streamlit."
+            "OpenAI API key is not configured or `openai` package is not installed. Add `OPENAI_API_KEY` in `.env.local` "
+            "and ensure you have run `pip install openai`."
         )
+
+    global_app_context = """
+Available Dashboard Pages (direct the user here if their question relates to these topics):
+1. 'Home' - Main dashboard hub and high-level entry point.
+2. 'Executive Overview' - Executive level snapshot of risk, cost, and lifecycle metrics.
+3. 'Geographic Risk Intelligence' - Regional/state risk distribution map and location-based analysis.
+4. 'Lifecycle & Asset Health' - End-of-Life (EoL) tracking, hardware support milestones, and asset health.
+5. 'Cost & Support Risk Analysis' - Financial exposure and support risk analysis (unsupported/expired devices).
+6. 'Investment Prioritization' - Optimization and prioritizing investments for hardware replacement.
+"""
 
     system_text = (
         f"You are {BOT_NAME}, an assistant for Southern Company dashboard users.\n"
         "Only answer questions related to this dashboard, its KPIs, trends, filters, and insights.\n"
         "Be concise, data-driven, and practical.\n"
         "Do NOT re-introduce yourself after the first message — the user already knows who you are.\n\n"
-        f"Dashboard context:\n{context}"
+        f"{global_app_context}\n"
+        f"Current Page Context:\n{context}"
     )
 
-    contents: list = [{"role": "user", "parts": [system_text]},
-                      {"role": "model", "parts": ["Understood. I will assist with dashboard questions concisely."]}]
+    messages: list = [{"role": "system", "content": system_text}]
 
     for msg in history:
-        role = "model" if msg["role"] == "assistant" else "user"
-        contents.append({"role": role, "parts": [msg["content"]]})
+        # Avoid appending the system instructions as user messages if any got in history somehow
+        messages.append({"role": msg["role"], "content": msg["content"]})
 
-    contents.append({"role": "user", "parts": [prompt]})
-
-    response = model.generate_content(contents)
-    text = getattr(response, "text", None)
-    return text.strip() if text else "I could not generate a response. Please try again."
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",  # or gpt-4o-mini
+            messages=messages,
+            temperature=0.7,
+        )
+        text = response.choices[0].message.content
+        return text.strip() if text else "I could not generate a response. Please try again."
+    except Exception as exc:
+        import traceback
+        return f"Error contacting OpenAI: {exc}\n\nDetails: {traceback.format_exc()}"
 
 
 def _inject_toggle_css() -> None:
@@ -204,7 +192,7 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
     history: List[Dict[str, str]] = st.session_state[history_key]
 
     # Scrollable message area — fills most of the viewport
-    chat_area = st.container(height=520)
+    chat_area = st.container(height=420)
     with chat_area:
         for msg in history:
             role = "user" if msg.get("role") == "user" else "assistant"
@@ -222,9 +210,9 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
             placeholder="Type a message and press Enter…",
             label_visibility="collapsed",
         )
-        st.form_submit_button("Send", use_container_width=True)
+        submitted = st.form_submit_button("Send", use_container_width=True)
 
-    if prompt and prompt.strip():
+    if submitted and prompt and prompt.strip():
         history.append({"role": "user", "content": prompt.strip()})
         with chat_area:
             st.markdown(
@@ -237,7 +225,8 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
                 context = _build_dashboard_context(df, page_title)
                 answer = _generate_reply(prompt.strip(), context, history)
             except Exception as exc:
-                answer = f"Error contacting Gemini: {exc}"
+                import traceback
+                answer = f"Error contacting OpenAI: {exc}\n\nDetails: {traceback.format_exc()}"
         history.append({"role": "assistant", "content": answer})
         st.session_state[history_key] = history
         st.rerun()
@@ -266,36 +255,100 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
     """
     if OPEN_KEY not in st.session_state:
         st.session_state[OPEN_KEY] = False
+    if "spark_sidebar_hidden" not in st.session_state:
+        st.session_state["spark_sidebar_hidden"] = False
 
     _inject_toggle_css()
 
     is_open = st.session_state[OPEN_KEY]
 
     if is_open:
+        hide_sidebar = st.session_state.get("spark_sidebar_hidden", False)
+        
+        if hide_sidebar:
+            st.markdown(
+                """
+                <style>
+                    /* Collapse sidebar */
+                    section[data-testid="stSidebar"] {
+                        width: 0px !important;
+                        min-width: 0px !important;
+                        max-width: 0px !important;
+                        overflow: hidden !important;
+                        opacity: 0 !important;
+                        padding: 0 !important;
+                        transition: all 0.25s ease;
+                    }
+                    /* Hide native collapsed control */
+                    [data-testid="collapsedControl"] {
+                        display: none !important;
+                    }
+                    /* Custom Expand Button */
+                    [data-testid="stColumn"]:has(#custom-expand-btn) {
+                        position: fixed !important;
+                        top: 20px !important;
+                        left: 20px !important;
+                        z-index: 99999 !important;
+                        width: 45px !important;
+                        flex: none !important;
+                    }
+                    [data-testid="stColumn"]:has(#custom-expand-btn) button {
+                        background: rgba(30, 41, 59, 0.7) !important;
+                        border: 1px solid #334155 !important;
+                        color: white !important;
+                        font-weight: bold !important;
+                        padding: 5px !important;
+                        border-radius: 6px !important;
+                        transition: all 0.2s ease !important;
+                        display: flex !important;
+                        justify-content: center !important;
+                    }
+                    [data-testid="stColumn"]:has(#custom-expand-btn) button:hover {
+                        background: #2563eb !important;
+                        border-color: #2563eb !important;
+                    }
+                    /* Remove height from the container so it doesn't push down content */
+                    [data-testid="stHorizontalBlock"]:has(#custom-expand-btn) {
+                        height: 0px !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        gap: 0 !important;
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+            
+            # Invisible column layout just to host the fixed button without messing up main content
+            btn_container = st.container()
+            with btn_container:
+                expand_col, _ = st.columns([1, 10])
+                with expand_col:
+                    st.markdown("<div id='custom-expand-btn'></div>", unsafe_allow_html=True)
+                    if st.button("⟫", key=f"expand-sidebar-{page_title}", help="Show Sidebar Pages"):
+                        st.session_state["spark_sidebar_hidden"] = False
+                        st.rerun()
+
         st.markdown(
             """
             <style>
-                /* Collapse sidebar */
-                section[data-testid="stSidebar"] {
-                    width: 0px !important;
-                    min-width: 0px !important;
-                    max-width: 0px !important;
-                    overflow: hidden !important;
-                    opacity: 0 !important;
-                    padding: 0 !important;
-                    transition: all 0.25s ease;
+                /* Animate chat opening */
+                @keyframes slideInChat {
+                    0% { opacity: 0; transform: translateX(30px); }
+                    100% { opacity: 1; transform: translateX(0); }
                 }
-                [data-testid="collapsedControl"] {
-                    display: none !important;
+                [data-testid="stHorizontalBlock"]:has(.spark-badge) > [data-testid="stColumn"]:last-child {
+                    animation: slideInChat 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
                 }
+                
                 /* Stretch chat column to full viewport height */
                 [data-testid="stHorizontalBlock"]:has(.spark-badge)
                     > [data-testid="stColumn"]:last-child
                     > div > div[data-testid="stVerticalBlockBorderWrapper"] {
                     position: sticky;
-                    top: 3.5rem;
-                    min-height: calc(100vh - 4rem);
-                    max-height: calc(100vh - 4rem);
+                    top: 2.5rem;
+                    min-height: calc(100vh - 6rem);
+                    max-height: calc(100vh - 6rem);
                     overflow-y: auto;
                 }
             </style>
@@ -319,10 +372,51 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
                 _render_chat_panel(page_title, df)
         return main_col
     else:
-        # Push the open-chat icon to the far right
-        spacer, icon_col = st.columns([14, 1])
+        st.markdown(
+            """
+            <style>
+                [data-testid="stColumn"]:has(#spark-button-container) {
+                    position: fixed !important;
+                    bottom: 40px !important;
+                    right: 40px !important;
+                    z-index: 9999 !important;
+                    width: 70px !important;
+                    flex: none !important;
+                }
+                [data-testid="stColumn"]:has(#spark-button-container) button {
+                    border-radius: 50% !important;
+                    width: 65px !important;
+                    height: 65px !important;
+                    padding: 0 !important;
+                    background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
+                    color: white !important;
+                    border: none !important;
+                    box-shadow: 0 0 20px rgba(37, 99, 235, 0.7), 0 0 40px rgba(14, 165, 233, 0.5) !important;
+                    transition: all 0.3s ease !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                }
+                [data-testid="stColumn"]:has(#spark-button-container) button:hover {
+                    transform: scale(1.1) !important;
+                    box-shadow: 0 0 30px rgba(37, 99, 235, 0.9), 0 0 50px rgba(14, 165, 233, 0.7) !important;
+                }
+                [data-testid="stColumn"]:has(#spark-button-container) button p {
+                    font-size: 32px !important;
+                    margin: 0 !important;
+                }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        main_container = st.container()
+        
+        spacer, icon_col = st.columns([1, 1])
         with icon_col:
-            if st.button("⚡", key=f"spark-toggle-{page_title}", help=f"Open {BOT_NAME}"):
+            st.markdown("<div id='spark-button-container'></div>", unsafe_allow_html=True)
+            if st.button("💬", key=f"spark-toggle-{page_title}", help=f"Open {BOT_NAME}"):
                 st.session_state[OPEN_KEY] = True
+                st.session_state["spark_sidebar_hidden"] = True
                 st.rerun()
-        return st.container()
+                
+        return main_container
