@@ -17,7 +17,11 @@ def load_data(file_path: Optional[str] = None) -> pd.DataFrame:
         pd.DataFrame: The loaded dataset.
     """
     if file_path is None:
-        file_path = os.getenv("DATA_PATH", "dataset/sample_data.parquet")
+        file_path = os.getenv("DATA_PATH", "dataset/dashboard_master_data.csv")
+
+    # If the user has uploaded a custom dataset via the Data Entry tab, use it
+    if "uploaded_dataset" in st.session_state and st.session_state["uploaded_dataset"] is not None:
+        return st.session_state["uploaded_dataset"]
 
     # For scaffolding, return an empty placeholder if the file doesn't exist
     if not os.path.exists(file_path):
