@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .env
 .env.local
+
+KPI_Definitions.md
