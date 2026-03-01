@@ -1,5 +1,7 @@
+import os
+import sys
+
 import streamlit as st
-import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 from src.theme import inject_theme_css, COLORS
@@ -9,204 +11,241 @@ st.set_page_config(page_title="Southern Company Analytics", page_icon="⚡", lay
 inject_theme_css()
 render_sidebar_logo()
 
-# ── Additional Home-specific CSS ─────────────────────────────────────────────
+# ── Custom CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-.home-hero {
+/* Hero Section */
+.hero-section {
     text-align: center;
-    padding: 40px 20px 30px 20px;
+    padding: 44px 20px 42px;
     animation: fadeInUp 0.6s ease-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
-.home-hero h1 {
-    font-size: 2.8rem !important;
-    font-weight: 900 !important;
-    color: #1A1F2E !important;
-    letter-spacing: -1px;
-    margin-bottom: 8px;
-    line-height: 1.1;
-}
-.home-hero .subtitle {
-    font-size: 1.1rem;
-    color: #6B7B8D;
-    font-weight: 500;
-    max-width: 620px;
-    margin: 0 auto;
-    line-height: 1.6;
-}
-.home-hero .badge {
+.hero-badge {
     display: inline-block;
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 1.2px;
+    background: #E8734A;
     color: #FFFFFF;
-    background: linear-gradient(135deg, #E8734A, #D35400);
-    border-radius: 999px;
-    padding: 5px 16px;
-    margin-bottom: 16px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
-    box-shadow: 0 4px 14px rgba(232, 115, 74, 0.3);
+    padding: 7px 22px;
+    border-radius: 50px;
+    margin-bottom: 22px;
+}
+.hero-title {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: #1A1F2E;
+    line-height: 1.15;
+    margin-bottom: 14px;
+    letter-spacing: -0.5px;
+    text-align: center;
+}
+.hero-subtitle {
+    font-size: 1.02rem;
+    color: #64748B;
+    max-width: 660px;
+    line-height: 1.65;
+    margin: 0 auto;
+    font-weight: 400;
+    text-align: center;
 }
 
+/* Card Grid — force single row */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 18px;
+    padding: 10px 0 40px;
+    margin: 0 auto;
+    width: 100%;
+}
 .nav-card {
     background: #FFFFFF;
     border-radius: 18px;
-    padding: 28px 26px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.03);
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    cursor: pointer;
-    height: 100%;
-    min-height: 180px;
+    padding: 26px 20px 22px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.05), 0 1px 4px rgba(0,0,0,0.03);
+    transition: transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94),
+                box-shadow 0.35s cubic-bezier(0.25,0.46,0.45,0.94);
+    animation: fadeInUp 0.55s ease-out both;
     display: flex;
     flex-direction: column;
-    animation: fadeInUp 0.5s ease-out both;
+    cursor: default;
+    text-decoration: none !important;
+    min-width: 0;
 }
 .nav-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
 }
-.nav-card .icon-circle {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+.card-grid .nav-card:nth-child(1) { animation-delay: 0.05s; }
+.card-grid .nav-card:nth-child(2) { animation-delay: 0.10s; }
+.card-grid .nav-card:nth-child(3) { animation-delay: 0.15s; }
+.card-grid .nav-card:nth-child(4) { animation-delay: 0.20s; }
+.card-grid .nav-card:nth-child(5) { animation-delay: 0.25s; }
+.card-grid .nav-card:nth-child(6) { animation-delay: 0.30s; }
+
+.card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 13px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     margin-bottom: 16px;
     flex-shrink: 0;
 }
-.nav-card .card-title {
-    font-size: 1.05rem;
+.card-title {
+    font-size: 0.97rem;
     font-weight: 800;
     color: #1A1F2E;
-    margin-bottom: 6px;
-    letter-spacing: -0.2px;
+    margin-bottom: 7px;
+    line-height: 1.3;
 }
-.nav-card .card-desc {
-    font-size: 0.84rem;
-    color: #6B7B8D;
+.card-desc {
+    font-size: 0.82rem;
+    color: #64748B;
     line-height: 1.5;
-    font-weight: 500;
-    flex-grow: 1;
+    flex: 1;
+    margin-bottom: 14px;
 }
-.nav-card .card-tag {
+.card-badge {
     display: inline-block;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    padding: 3px 10px;
-    border-radius: 6px;
-    margin-top: 12px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 1.4px;
     text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 6px;
+    width: fit-content;
 }
 
-.nav-card:nth-child(1) { animation-delay: 0.1s; }
-.nav-card:nth-child(2) { animation-delay: 0.15s; }
-.nav-card:nth-child(3) { animation-delay: 0.2s; }
-.nav-card:nth-child(4) { animation-delay: 0.25s; }
-.nav-card:nth-child(5) { animation-delay: 0.3s; }
+/* Hide the page-link row visually but keep it functional */
+.page-links-row {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
 
+/* Footer */
 .home-footer {
     text-align: center;
-    padding: 32px 20px 16px 20px;
-    animation: fadeIn 0.8s ease-out 0.4s both;
-}
-.home-footer p {
-    font-size: 0.82rem;
+    padding: 24px 20px 14px;
     color: #94A3B8;
+    font-size: 0.82rem;
     font-weight: 500;
+    border-top: 1px solid #D8E0DB;
+    max-width: 900px;
+    margin: 0 auto;
+}
+.home-footer span {
+    color: #94A3B8 !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Hero Section ─────────────────────────────────────────────────────────────
+# ── Hero Section ──────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="home-hero">
-    <div class="badge">Enterprise Intelligence Platform</div>
-    <h1>Southern Company<br>Fleet Analytics</h1>
-    <p class="subtitle">
-        Strategic insights into fleet lifecycle status, risk exposure,
-        geographic distribution, and cost optimization — all in one place.
+<div class="hero-section">
+    <div class="hero-badge">Enterprise Intelligence Platform</div>
+    <div class="hero-title">Southern Company<br>Fleet Analytics</div>
+    <p class="hero-subtitle">
+        Strategic insights into fleet lifecycle status, risk exposure, geographic distribution,
+        and cost optimization &mdash; all in one place.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("---")
-
-# ── Navigation Cards ─────────────────────────────────────────────────────────
-NAV_ITEMS = [
+# ── Page cards ────────────────────────────────────────────────────────────────
+PAGE_CARDS = [
     {
-        "icon": "📈",
+        "icon": "📊",
         "title": "Executive Overview",
         "desc": "High-level KPIs, risk distribution, and support status across the entire fleet.",
-        "color": "#E8734A",
-        "tag": "Strategic",
-        "tag_bg": "rgba(232, 115, 74, 0.12)",
-        "tag_color": "#E8734A",
+        "badge": "Strategic",
+        "badge_bg": "rgba(232,115,74,0.12)",
+        "badge_color": "#D35400",
+        "icon_bg": "rgba(232,115,74,0.12)",
+        "path": "pages/1_Executive_Overview.py",
     },
     {
-        "icon": "🌎",
+        "icon": "🌍",
         "title": "Geographic Risk Intelligence",
         "desc": "3D risk map, state-level hotspots, and priority site clustering for field deployment.",
-        "color": "#3498DB",
-        "tag": "Geospatial",
-        "tag_bg": "rgba(52, 152, 219, 0.12)",
-        "tag_color": "#3498DB",
+        "badge": "Geospatial",
+        "badge_bg": "rgba(52,152,219,0.12)",
+        "badge_color": "#2471A3",
+        "icon_bg": "rgba(52,152,219,0.12)",
+        "path": "pages/2_Geographic_Risk_Intelligence.py",
     },
     {
-        "icon": "🔧",
+        "icon": "⚙️",
         "title": "Lifecycle & Asset Health",
         "desc": "EoL trends, aging infrastructure tracking, and critical overdue asset monitoring.",
-        "color": "#27AE60",
-        "tag": "Monitoring",
-        "tag_bg": "rgba(39, 174, 96, 0.12)",
-        "tag_color": "#27AE60",
+        "badge": "Monitoring",
+        "badge_bg": "rgba(142,68,173,0.12)",
+        "badge_color": "#7D3C98",
+        "icon_bg": "rgba(142,68,173,0.12)",
+        "path": "pages/3_Lifecycle_Asset_Health.py",
     },
     {
-        "icon": "💰",
+        "icon": "💲",
         "title": "Cost & Support Risk",
         "desc": "Financial exposure analysis, support coverage gaps, and technical debt visualization.",
-        "color": "#F0A830",
-        "tag": "Financial",
-        "tag_bg": "rgba(240, 168, 48, 0.12)",
-        "tag_color": "#D4940A",
+        "badge": "Financial",
+        "badge_bg": "rgba(240,168,48,0.12)",
+        "badge_color": "#B7791F",
+        "icon_bg": "rgba(240,168,48,0.12)",
+        "path": "pages/5_Support_Security_Cost.py",
     },
     {
         "icon": "🎯",
         "title": "Investment Prioritization",
         "desc": "Budget simulator, priority ranking, and site-level action plans for CapEx allocation.",
-        "color": "#8E44AD",
-        "tag": "Planning",
-        "tag_bg": "rgba(142, 68, 173, 0.12)",
-        "tag_color": "#8E44AD",
+        "badge": "Planning",
+        "badge_bg": "rgba(39,174,96,0.12)",
+        "badge_color": "#1E8449",
+        "icon_bg": "rgba(39,174,96,0.12)",
+        "path": "pages/6_Investment_Prioritization.py",
+    },
+    {
+        "icon": "🔮",
+        "title": "Predictive Risk Forecast",
+        "desc": "Forward-looking risk trajectories and scenario-based outcomes for proactive decisions.",
+        "badge": "Forecasting",
+        "badge_bg": "rgba(231,76,60,0.12)",
+        "badge_color": "#C0392B",
+        "icon_bg": "rgba(231,76,60,0.12)",
+        "path": "pages/7_Predictive_Risk_Forecast.py",
     },
 ]
 
-cols = st.columns(5, gap="medium")
-for i, item in enumerate(NAV_ITEMS):
-    with cols[i]:
-        st.markdown(f"""
-        <div class="nav-card">
-            <div class="icon-circle" style="background: {item['color']}15;">
-                {item['icon']}
-            </div>
-            <div class="card-title">{item['title']}</div>
-            <div class="card-desc">{item['desc']}</div>
-            <div>
-                <span class="card-tag" style="background: {item['tag_bg']}; color: {item['tag_color']};">
-                    {item['tag']}
-                </span>
-            </div>
+cards_html = '<div class="card-grid">'
+for card in PAGE_CARDS:
+    cards_html += f"""
+    <div class="nav-card">
+        <div class="card-icon" style="background:{card['icon_bg']};">
+            {card['icon']}
         </div>
-        """, unsafe_allow_html=True)
+        <div class="card-title">{card['title']}</div>
+        <div class="card-desc">{card['desc']}</div>
+        <div class="card-badge" style="background:{card['badge_bg']};color:{card['badge_color']};">
+            {card['badge']}
+        </div>
+    </div>"""
+cards_html += "</div>"
 
-st.markdown("---")
+st.markdown(cards_html, unsafe_allow_html=True)
 
-# ── Quick-start guidance ─────────────────────────────────────────────────────
 st.markdown("""
 <div class="home-footer">
-    <p>Navigate using the <b>sidebar</b> to explore each dashboard module.
-    Use the <b>AI Copilot</b> chat on any page for instant insights.</p>
+    <span>Use the sidebar to navigate across all dashboard modules.</span>
 </div>
 """, unsafe_allow_html=True)
