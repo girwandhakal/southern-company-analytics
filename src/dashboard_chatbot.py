@@ -167,6 +167,53 @@ def _inject_toggle_css() -> None:
                 margin-top: 0.3rem;
                 font-weight: 500;
             }
+            /* Keep chat controls readable regardless of global theme overrides */
+            div[class*="st-key-spark-close-"] button {
+                background: #F8FAFC !important;
+                color: #1A1F2E !important;
+                border: 1px solid #D8E0DB !important;
+            }
+            div[class*="st-key-spark-close-"] button p {
+                color: #1A1F2E !important;
+                font-weight: 800 !important;
+            }
+            div[class*="st-key-spark-close-"] button:hover {
+                background: #EEF2F7 !important;
+                color: #1A1F2E !important;
+                border-color: #94A3B8 !important;
+            }
+            div[class*="st-key-spark-form-"] .stTextInput > div > div {
+                background: #FFFFFF !important;
+                border: 1px solid #D8E0DB !important;
+                border-radius: 10px !important;
+            }
+            div[class*="st-key-spark-form-"] .stTextInput input {
+                background: #FFFFFF !important;
+                color: #1A1F2E !important;
+                -webkit-text-fill-color: #1A1F2E !important;
+            }
+            div[class*="st-key-spark-form-"] .stTextInput input::placeholder {
+                color: #6B7B8D !important;
+                -webkit-text-fill-color: #6B7B8D !important;
+                opacity: 1 !important;
+            }
+            /* Extra-specific targeting for the chat message input */
+            div[class*="st-key-spark-input-"] [data-baseweb="input"] {
+                background: #FFFFFF !important;
+                border: 1px solid #D8E0DB !important;
+                border-radius: 10px !important;
+            }
+            div[class*="st-key-spark-input-"] input {
+                background: #FFFFFF !important;
+                color: #1A1F2E !important;
+                -webkit-text-fill-color: #1A1F2E !important;
+                caret-color: #1A1F2E !important;
+            }
+            div[class*="st-key-spark-input-"] input::placeholder {
+                color: #6B7B8D !important;
+                -webkit-text-fill-color: #6B7B8D !important;
+                opacity: 1 !important;
+            }
         </style>
         """,
         unsafe_allow_html=True,
@@ -207,6 +254,7 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
             "Message",
             placeholder="Type a message and press Enter…",
             label_visibility="collapsed",
+            key=f"spark-input-{page_title}",
         )
         submitted = st.form_submit_button("Send", use_container_width=True)
 

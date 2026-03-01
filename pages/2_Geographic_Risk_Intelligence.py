@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import pydeck as pdk
 import json
@@ -10,6 +11,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.data_loader import load_data, apply_global_filters
 from src.dashboard_chatbot import render_dashboard_chatbot
+from src.download_utils import render_plotly_with_download, render_table_with_download
 from src.theme import (
     inject_theme_css, page_header, section_divider, fmt_currency,
     COLORS, RISK_COLOR_MAP, RISK_ORDER, PLOTLY_LAYOUT, PLOTLY_CLEAN,
@@ -41,6 +43,12 @@ RISK_SEVERITY = {
     "Medium (Approaching EoL)": 2,
     "Low (Healthy)": 3,
 }
+
+CLUSTER_PALETTE = [
+    COLORS["crimson"], COLORS["sky"], COLORS["emerald"], COLORS["gold"],
+    COLORS["coral"], "#9B59B6", "#1ABC9C", "#E67E22", "#2980B9", "#C0392B",
+    "#16A085", "#D35400", "#8E44AD", "#27AE60", "#F39C12",
+]
 
 with main:
     page_header(
@@ -133,10 +141,11 @@ with main:
                 #map {{ width: 100%; height: 100vh; position: relative; }}
                 #tooltip {{
                     position: absolute; z-index: 10; pointer-events: none;
-                    background: #1A1F2E; color: #fff; font-size: 13px;
+                    background: #F8FAFC; color: #1A1F2E; font-size: 13px;
                     padding: 10px 14px; border-radius: 10px;
                     display: none; max-width: 280px;
-                    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+                    border: 1px solid #D8E0DB;
+                    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
                     font-family: Inter, sans-serif;
                 }}
                 #legend {{
@@ -270,6 +279,13 @@ with main:
         </html>
         """
         components.html(map_html, height=550)
+        st.download_button(
+            label="Download map data (CSV)",
+            data=col_agg.to_csv(index=False).encode("utf-8"),
+            file_name="geographic_risk_map_data.csv",
+            mime="text/csv",
+            key="geo_risk_map_data_download",
+        )
 
     # ── Risk Clustering Table ────────────────────────────────────────────
     section_divider()
@@ -298,8 +314,12 @@ with main:
             "Total_Replacement_Cost"
         ].apply(lambda v: f"${v:,.2f}")
 
-        st.dataframe(
-            site_summary, use_container_width=True, hide_index=True,
+        render_table_with_download(
+            site_summary,
+            "risk_clustering_priority_sites",
+            "geo_risk_priority_sites",
+            export_df=site_summary,
+            use_container_width=True, hide_index=True,
             column_config={
                 "Site_Code": st.column_config.TextColumn("Site Code"),
                 "State": st.column_config.TextColumn("State"),
@@ -307,3 +327,309 @@ with main:
                 "Total_Replacement_Cost": st.column_config.TextColumn("Total Replacement Cost"),
             },
         )
+
+    section_divider()
+    geo_tab, proximity_tab = st.tabs(
+        ["🌐 Geographic Risk Views", "📍 Proximity-Based Site Clustering"]
+    )
+
+    with proximity_tab:
+        st.subheader("Proximity-Based Site Clustering")
+        st.caption(
+            "Identify nearby sites that can be bundled into a single field deployment. "
+            "This directly answers radius-based lifecycle planning (1 / 5 / 10+ miles)."
+        )
+
+        ctrl_left, ctrl_right = st.columns([1, 2])
+        with ctrl_left:
+            radius_miles = st.select_slider(
+                "Cluster Radius",
+                options=[1, 2, 5, 10, 15, 25],
+                value=5,
+                format_func=lambda x: f"{x} mi",
+                help="Maximum distance between sites to form a deployment cluster.",
+                key="geo_proximity_radius",
+            )
+        with ctrl_right:
+            risk_filter = st.multiselect(
+                "Risk Levels to Include",
+                options=RISK_ORDER,
+                default=["Critical (Past EoL)", "High (Near EoL)", "Medium (Approaching EoL)"],
+                help="Only selected risk levels are considered for proximity clustering.",
+                key="geo_proximity_risk_filter",
+            )
+
+        work_df = df_filtered[df_filtered["Risk_Level"].isin(risk_filter)].copy() if risk_filter else df_filtered.copy()
+        work_df = work_df.dropna(subset=["Latitude", "Longitude"])
+        us_mask = (
+            (work_df["Latitude"] >= 24) & (work_df["Latitude"] <= 50) &
+            (work_df["Longitude"] >= -125) & (work_df["Longitude"] <= -66)
+        )
+        work_df = work_df[us_mask]
+
+        if work_df.empty:
+            st.info("No devices match the selected filters for proximity analysis.")
+        else:
+            site_df = work_df.groupby("Site_Code", as_index=False).agg(
+                Latitude=("Latitude", "first"),
+                Longitude=("Longitude", "first"),
+                State=("State", "first"),
+                Device_Count=("Hostname", "size"),
+                Total_Cost=("Total_Replacement_Cost", "sum"),
+                Risk_Score_Sum=("Risk_Score", "sum"),
+                Critical=("Risk_Level", lambda x: (x == "Critical (Past EoL)").sum()),
+                High=("Risk_Level", lambda x: (x == "High (Near EoL)").sum()),
+            )
+
+            from sklearn.cluster import DBSCAN
+
+            coords = site_df[["Latitude", "Longitude"]].values
+            eps_rad = radius_miles / 3958.8
+            labels = DBSCAN(eps=eps_rad, min_samples=2, metric="haversine").fit_predict(
+                np.radians(coords)
+            )
+            site_df["Cluster"] = labels
+
+            clustered = site_df[site_df["Cluster"] >= 0].copy()
+            n_clusters = int(clustered["Cluster"].nunique()) if not clustered.empty else 0
+            n_sites_clustered = len(clustered)
+            n_sites_total = len(site_df)
+            total_cluster_cost = clustered["Total_Cost"].sum() if not clustered.empty else 0
+            avg_per_cluster = round(n_sites_clustered / n_clusters, 1) if n_clusters > 0 else 0
+
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Clusters Found", f"{n_clusters:,}")
+            k2.metric("Sites in Clusters", f"{n_sites_clustered:,} / {n_sites_total:,}")
+            k3.metric("Clustered Replacement Cost", fmt_currency(total_cluster_cost))
+            k4.metric("Avg Sites per Cluster", f"{avg_per_cluster}")
+
+            if n_clusters == 0:
+                st.info(
+                    "No clusters found at the selected radius. "
+                    "Try increasing the radius or including more risk levels."
+                )
+            else:
+                map_data = site_df.copy()
+                map_data["Cluster_Label"] = map_data["Cluster"].apply(
+                    lambda x: f"Cluster {x + 1}" if x >= 0 else "Unclustered"
+                )
+                map_data["Marker_Size"] = map_data["Device_Count"].clip(upper=50)
+
+                unique_labels = sorted(
+                    [l for l in map_data["Cluster_Label"].unique() if l != "Unclustered"]
+                )
+                color_map = {"Unclustered": "#C0C0C0"}
+                for i, label in enumerate(unique_labels):
+                    color_map[label] = CLUSTER_PALETTE[i % len(CLUSTER_PALETTE)]
+
+                center_lat = map_data["Latitude"].mean()
+                center_lon = map_data["Longitude"].mean()
+                lat_span = map_data["Latitude"].max() - map_data["Latitude"].min()
+                lon_span = map_data["Longitude"].max() - map_data["Longitude"].min()
+                span = max(lat_span, lon_span, 0.01)
+                zoom = max(3.0, min(10.0, 7.0 - math.log2(span + 0.1)))
+
+                fig_map = px.scatter_mapbox(
+                    map_data,
+                    lat="Latitude",
+                    lon="Longitude",
+                    color="Cluster_Label",
+                    size="Marker_Size",
+                    color_discrete_map=color_map,
+                    hover_name="Site_Code",
+                    hover_data={
+                        "State": True,
+                        "Device_Count": True,
+                        "Total_Cost": ":$,.0f",
+                        "Cluster_Label": True,
+                        "Marker_Size": False,
+                        "Latitude": ":.4f",
+                        "Longitude": ":.4f",
+                    },
+                    zoom=zoom,
+                    center={"lat": center_lat, "lon": center_lon},
+                    mapbox_style="carto-positron",
+                    opacity=0.85,
+                )
+                fig_map.update_layout(
+                    height=520,
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font=dict(family="Inter, sans-serif"),
+                    legend=dict(
+                        title="Cluster",
+                        orientation="v",
+                        yanchor="top", y=0.98,
+                        xanchor="left", x=0.01,
+                        bgcolor="rgba(255,255,255,0.92)",
+                        bordercolor="#E0E6E3",
+                        borderwidth=1,
+                    ),
+                )
+                render_plotly_with_download(
+                    fig_map,
+                    "geographic_proximity_cluster_map",
+                    "geo_risk_proximity_cluster_map",
+                    use_container_width=True,
+                    config=PLOTLY_CLEAN,
+                )
+
+                cluster_summary = (
+                    clustered.groupby("Cluster", as_index=False)
+                    .agg(
+                        Sites=("Site_Code", "count"),
+                        States=("State", lambda x: ", ".join(sorted(x.unique()))),
+                        Site_Codes=("Site_Code", lambda x: ", ".join(sorted(x))),
+                        Total_Devices=("Device_Count", "sum"),
+                        Critical_Devices=("Critical", "sum"),
+                        High_Risk_Devices=("High", "sum"),
+                        Total_Replacement_Cost=("Total_Cost", "sum"),
+                        Avg_Risk_Score=("Risk_Score_Sum", "mean"),
+                    )
+                    .sort_values("Total_Replacement_Cost", ascending=False)
+                )
+                cluster_summary["Cluster"] = cluster_summary["Cluster"].apply(
+                    lambda x: f"Cluster {x + 1}"
+                )
+                cluster_summary["Avg_Risk_Score"] = cluster_summary["Avg_Risk_Score"].round(1)
+
+                render_table_with_download(
+                    cluster_summary,
+                    "geographic_proximity_cluster_details",
+                    "geo_risk_proximity_cluster_details",
+                    export_df=cluster_summary,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Cluster": st.column_config.TextColumn("Cluster"),
+                        "Sites": st.column_config.NumberColumn("Sites"),
+                        "States": st.column_config.TextColumn("States"),
+                        "Site_Codes": st.column_config.TextColumn("Site Codes"),
+                        "Total_Devices": st.column_config.NumberColumn("Total Devices"),
+                        "Critical_Devices": st.column_config.NumberColumn("Critical"),
+                        "High_Risk_Devices": st.column_config.NumberColumn("High Risk"),
+                        "Total_Replacement_Cost": st.column_config.NumberColumn(
+                            "Replacement Cost", format="$ %.0f"
+                        ),
+                        "Avg_Risk_Score": st.column_config.NumberColumn(
+                            "Avg Risk Score", format="%.1f"
+                        ),
+                    },
+                )
+
+                top = cluster_summary.iloc[0]
+                st.markdown(
+                    f"<div style='background:#d4edda; border:1px solid #b7dfb9; border-radius:8px; "
+                    f"padding:14px 18px; font-family:Inter,sans-serif; font-size:15px; "
+                    f"color:#1a1f36; line-height:1.6;'>"
+                    f"<b>Top Priority:</b> <b>{top['Cluster']}</b> — "
+                    f"{int(top['Sites'])} sites across {top['States']} "
+                    f"with {int(top['Total_Devices'])} devices "
+                    f"({int(top['Critical_Devices'])} critical, "
+                    f"{int(top['High_Risk_Devices'])} high-risk). "
+                    f"Bundled replacement cost: <b>{fmt_currency(top['Total_Replacement_Cost'])}</b>.</div>",
+                    unsafe_allow_html=True,
+                )
+
+    with geo_tab:
+        st.subheader("County-Level Risk Distribution")
+        st.caption("Device risk aggregated by county for granular regional planning.")
+
+        if "PhysicalAddressCounty" in df_filtered.columns:
+            county_data = df_filtered.dropna(subset=["PhysicalAddressCounty"]).copy()
+            if county_data.empty:
+                st.info("No county data available for the current selection.")
+            else:
+                county_agg = (
+                    county_data.groupby(
+                        ["PhysicalAddressCounty", "State"], as_index=False
+                    )
+                    .agg(
+                        Total_Devices=("Hostname", "size"),
+                        High_Risk_Devices=(
+                            "Risk_Level",
+                            lambda x: x.isin(
+                                ["Critical (Past EoL)", "High (Near EoL)"]
+                            ).sum(),
+                        ),
+                        Total_Replacement_Cost=("Total_Replacement_Cost", "sum"),
+                    )
+                    .sort_values("Total_Replacement_Cost", ascending=False)
+                )
+
+                left_c, right_c = st.columns(2)
+
+                with left_c:
+                    top_counties = county_agg.head(15).sort_values(
+                        "Total_Replacement_Cost", ascending=True
+                    )
+                    fig_county = px.bar(
+                        top_counties,
+                        x="Total_Replacement_Cost",
+                        y="PhysicalAddressCounty",
+                        orientation="h",
+                        text="Total_Devices",
+                        color_discrete_sequence=[COLORS["coral"]],
+                        labels={
+                            "Total_Replacement_Cost": "Total Replacement Cost",
+                            "PhysicalAddressCounty": "County",
+                        },
+                    )
+                    fig_county.update_traces(
+                        texttemplate="%{text} devices",
+                        textposition="outside",
+                        textfont_size=12,
+                        marker_line_width=0,
+                    )
+                    fig_county.update_layout(PLOTLY_LAYOUT)
+                    fig_county.update_layout(
+                        showlegend=False,
+                        xaxis_title="Total Replacement Cost ($)",
+                        yaxis_title=None,
+                        height=max(360, len(top_counties) * 30 + 100),
+                        hoverlabel=dict(
+                            bgcolor="#FFFFFF",
+                            font_color="#1A1F2E",
+                            font_size=13,
+                            font_family="Inter, sans-serif",
+                            bordercolor="#E0E6E3",
+                        ),
+                    )
+                    fig_county.update_xaxes(
+                        tickprefix="$", separatethousands=True
+                    )
+                    render_plotly_with_download(
+                        fig_county,
+                        "county_level_replacement_cost_distribution",
+                        "geo_risk_county_replacement_distribution",
+                        use_container_width=True,
+                        config=PLOTLY_CLEAN,
+                    )
+
+                with right_c:
+                    county_table = county_agg.head(25)
+                    render_table_with_download(
+                        county_table,
+                        "county_level_risk_distribution_table",
+                        "geo_risk_county_distribution_table",
+                        export_df=county_table,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "PhysicalAddressCounty": st.column_config.TextColumn(
+                                "County"
+                            ),
+                            "State": st.column_config.TextColumn("State"),
+                            "Total_Devices": st.column_config.NumberColumn(
+                                "Devices"
+                            ),
+                            "High_Risk_Devices": st.column_config.NumberColumn(
+                                "High-Risk"
+                            ),
+                            "Total_Replacement_Cost": st.column_config.NumberColumn(
+                                "Replacement Cost", format="$ %.0f"
+                            ),
+                        },
+                    )
+        else:
+            st.info("County data column not found in dataset.")

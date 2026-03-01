@@ -50,13 +50,7 @@ def apply_global_filters(df: pd.DataFrame) -> pd.DataFrame:
     Empty selections mean 'show all'.
     """
     st.sidebar.markdown(
-        "<h3 style='margin-bottom: 4px;'>⚙️ Global Controls</h3>",
-        unsafe_allow_html=True,
-    )
-    st.sidebar.markdown(
-        "<p style='font-size: 0.72rem; color: #64748B !important; "
-        "font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; "
-        "margin-bottom: 12px;'>Filter across all pages</p>",
+        "<h3 style='margin: 0 0 2px 0; font-size: 0.95rem;'>⚙️ Global Controls</h3>",
         unsafe_allow_html=True,
     )
 
@@ -82,6 +76,28 @@ def apply_global_filters(df: pd.DataFrame) -> pd.DataFrame:
     else:
         selected_device_types = []
 
+    if "PhysicalAddressCounty" in df.columns:
+        all_counties = sorted(df["PhysicalAddressCounty"].dropna().unique().tolist())
+        selected_counties = st.sidebar.multiselect(
+            "County",
+            options=all_counties,
+            default=[],
+            help="Leave empty to show all counties.",
+        )
+    else:
+        selected_counties = []
+
+    if "Owner" in df.columns:
+        all_affiliates = sorted(df["Owner"].dropna().unique().tolist())
+        selected_affiliates = st.sidebar.multiselect(
+            "Affiliate",
+            options=all_affiliates,
+            default=[],
+            help="Leave empty to show all affiliates.",
+        )
+    else:
+        selected_affiliates = []
+
     filtered_df = df.copy()
 
     if selected_states:
@@ -90,40 +106,39 @@ def apply_global_filters(df: pd.DataFrame) -> pd.DataFrame:
     if selected_device_types:
         filtered_df = filtered_df[filtered_df["Device Type"].isin(selected_device_types)]
 
+    if selected_counties:
+        filtered_df = filtered_df[filtered_df["PhysicalAddressCounty"].isin(selected_counties)]
+
+    if selected_affiliates:
+        filtered_df = filtered_df[filtered_df["Owner"].isin(selected_affiliates)]
+
     render_sidebar_logo()
     return filtered_df
 
 
 def render_sidebar_logo():
-    """Renders the Southern Company logo centered in the remaining sidebar space."""
+    """Render a compact logo at the bottom of the sidebar controls."""
     import base64
-    st.sidebar.markdown("---")
     with open(_LOGO_PATH, "rb") as f:
         logo_b64 = base64.b64encode(f.read()).decode()
     st.sidebar.markdown(
         f"""
         <style>
-        /* Flex layout so the logo fills remaining sidebar height */
-        section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {{
-            display: flex !important;
-            flex-direction: column !important;
-        }}
-        section[data-testid="stSidebar"] [data-testid="stSidebarContent"] > div {{
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }}
         .sidebar-logo-wrap {{
-            flex: 1 1 auto;
+            margin-top: 1rem;
+            padding: 0.25rem 0 0.3rem 0;
             display: flex;
-            align-items: center;
             justify-content: center;
-            min-height: 0;
+        }}
+        .sidebar-logo-wrap img {{
+            width: 165px;
+            max-width: 88%;
+            height: auto;
+            opacity: 0.95;
         }}
         </style>
         <div class="sidebar-logo-wrap">
-            <img src="data:image/png;base64,{logo_b64}" width="180" />
+            <img src="data:image/png;base64,{logo_b64}" alt="Southern Company logo" />
         </div>
         """,
         unsafe_allow_html=True,

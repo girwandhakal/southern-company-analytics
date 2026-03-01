@@ -89,6 +89,68 @@ def inject_theme_css():
         background: linear-gradient(180deg, #1A1F2E 0%, #141824 100%) !important;
         border-right: 1px solid rgba(255,255,255,0.05) !important;
     }
+    section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+        padding-top: 0.1rem !important;
+        padding-bottom: 0.1rem !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stSidebarNav"] ul {
+        gap: 0.02rem !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a {
+        min-height: 1.7rem !important;
+        padding: 0.2rem 0.45rem !important;
+        font-size: 1.03rem !important;
+        font-weight: 700 !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a * {
+        font-size: inherit !important;
+        font-weight: inherit !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+        padding-top: 0.05rem !important;
+    }
+    section[data-testid="stSidebar"] .stMultiSelect,
+    section[data-testid="stSidebar"] .stSelectbox {
+        margin-bottom: 0.22rem !important;
+    }
+    section[data-testid="stSidebar"] hr {
+        margin: 0.32rem 0 !important;
+        border-top: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    section[data-testid="stSidebar"] .stMarkdown h3 {
+        margin: 0.15rem 0 0.1rem 0 !important;
+        font-size: 0.9rem !important;
+        line-height: 1.15 !important;
+    }
+    section[data-testid="stSidebar"] .stMarkdown p {
+        margin: 0.08rem 0 0.22rem 0 !important;
+        line-height: 1.1 !important;
+    }
+    section[data-testid="stSidebar"] .stMultiSelect label,
+    section[data-testid="stSidebar"] .stSelectbox label {
+        margin-bottom: 0.1rem !important;
+        font-size: 0.6rem !important;
+        letter-spacing: 0.6px !important;
+    }
+    section[data-testid="stSidebar"] [data-baseweb="select"] {
+        font-size: 0.92rem !important;
+    }
+    section[data-testid="stSidebar"] [data-baseweb="select"] > div {
+        min-height: 2rem !important;
+    }
+    section[data-testid="stSidebar"] [data-baseweb="select"] input {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+        margin-bottom: 0.12rem !important;
+    }
+    /* Extra compact mode for shorter displays */
+    @media (max-height: 900px) {
+        section[data-testid="stSidebar"] [data-testid="stSidebarContent"] > div {
+            zoom: 0.92;
+        }
+    }
     section[data-testid="stSidebar"] p,
     section[data-testid="stSidebar"] span,
     section[data-testid="stSidebar"] label,
@@ -337,6 +399,33 @@ def inject_theme_css():
     }
     .stButton > button p {
         color: inherit !important;
+    }
+    .stDownloadButton > button {
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 0.85rem !important;
+        letter-spacing: 0.3px !important;
+        transition: all 0.25s ease !important;
+        border: 1px solid #D8E0DB !important;
+        background: #F8FAFC !important;
+        color: #1A1F2E !important;
+    }
+    .stDownloadButton > button * {
+        color: #1A1F2E !important;
+    }
+    .stDownloadButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08) !important;
+        border-color: #94A3B8 !important;
+        background: #EEF2F7 !important;
+        color: #1A1F2E !important;
+    }
+    .stDownloadButton > button:active,
+    .stDownloadButton > button:focus {
+        background: #E8EDF4 !important;
+        color: #1A1F2E !important;
+        border-color: #94A3B8 !important;
+        box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2) !important;
     }
 
     /* ── Slider ─────────────────────────────────────── */
