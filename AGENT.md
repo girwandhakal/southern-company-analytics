@@ -1,7 +1,7 @@
 Your job is to scaffold a clean, production-grade Streamlit dashboard project with a clear directory structure and 5 pages (one per business question). Use vibecoding techniques: work in small, verifiable steps, keep changes tight, and always leave the code runnable.
 
 ## Non-negotiable rules
-1. Do not commit or push anything. Only provide the exact commands I should run, and if relevant, suggested commit messages (but never run git commands yourself).
+1. Do not commit or push anything. Only provide the exact commands I should run, and if relevant, suggested commit messages (but never run git commands yourself) unless specified by me.
 2. Do not add secrets or credentials. If anything needs config, use `.env.example` and/or `.streamlit/secrets.toml` (but keep `secrets.toml` out of git).
 3. Keep refactors minimal. Only add what is required to scaffold the app.
 4. Every new module must have type hints where reasonable, docstrings for public functions, and clear naming.

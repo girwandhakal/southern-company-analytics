@@ -5,7 +5,7 @@ from typing import Optional
 
 _LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "southern-company-logo-0.png")
 
-@st.cache_data
+# @st.cache_data # Removed to allow dynamic reloading from session state
 def load_data(file_path: Optional[str] = None) -> pd.DataFrame:
     """
     Loads data from a parquet or csv file, utilizing caching for performance.

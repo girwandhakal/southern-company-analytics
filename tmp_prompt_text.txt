@@ -1,0 +1,112 @@
+--- Slide 1 ---
+Using Data to Evaluate Network Costs and Identify Opportunities for Improvement/Optimization
+February 28, 2026
+--- Slide 2 ---
+Our Team
+--- Slide 3 ---
+Who is Southern Company
+?
+--- Slide 4 ---
+Utility company who makes, moves and sells energy
+Leading producer of clean, safe, reliable, and affordable energy
+Portfolio of subsidiaries includes...
+Electric utilities: Alabama Power, Georgia Power, Mississippi Power...
+Gas utilities: Atlanta Gas & Light, Nicor Gas, Virginia Natural Gas...
+Generating plants
+Telecommunications Companies: Southern Linc, Southern Company Services, STI
+Who is Southern Company
+?
+--- Slide 5 ---
+Ranked #2 in Fortune Magazine's 2025 World's Most Admired Companies in the Electric & Natural Gas Utilities category
+If you can imagine a job, we likely have it within our company
+Doctors, Lawyers, Real Estate Agents, Teachers, Chemists, Accountants, Pilots, Electricians, Mechanics, Security Officers, Data Scientists, Engineers
+We have a large Technology Organization which includes the Infrastructure Services Organization
+Who is Southern Company
+?
+--- Slide 6 ---
+What is Infrastructure Services?
+--- Slide 7 ---
+What is Network Services?
+--- Slide 8 ---
+What is Network Services?
+--- Slide 9 ---
+Our enterprise network relies on thousands of Cisco devices across offices, data centers, and field locations. While this equipment follows defined 
+End‑of‑Sale (
+EoS
+) 
+and 
+End‑of‑Life (
+EoL
+) 
+timelines, lifecycle data today is 
+fragmented, reactive, and difficult to visualize.
+As a result, we struggle to:
+Proactively identify aging or unsupported equipment
+Align refresh timing with risk, cost, and operational impact
+Ensure optimal SmartNet coverage and compliance
+Provide clear, executive‑level insight into lifecycle risk
+Cisco defines clear lifecycle milestones (
+EoS
+, 
+EoL
+, Last Day of Support), but turning those milestones into actionable planning insight remains a challenge.
+Issue
+--- Slide 10 ---
+Using data analysis and dashboards, help us answer:
+What equipment is approaching 
+EoS
+/
+EoL
+—and where (state, affiliate, county, 
+lat
+/long) is the highest risk?
+Are there sites within a specified radius of each other (Ex. 1 mi, 5 mi, 10 mi, etc.) where it would make sense to lifecycle the equipment together?
+Which devices are past recommended lifecycle stages but still in production?
+How is best to capture exceptions (if a device is active / “in production” but should be skipped or omitted from a project’s scope, how can that information best be captured and incorporated into reporting?
+How does lifecycle status correlate with support coverage, security risk, and cost?
+Where should we prioritize refresh or investment to reduce operational risk?
+What Students Can Help Us Understand
+--- Slide 11 ---
+How can we use our networking equipment data to evaluate current-state costs and 
+identify opportunities for improvement/optimization? 
+Data Analytics Prompt
+Provide a visualization / dashboard showing  data to provide leadership with clear insights to support decision-making. Feel free to show metrics by state, affiliate, county, model or device type. 
+Include details on the process for loading data into the visualization / dashboard from data sources using inputs from our organization and output to a visualization tool.
+--- Slide 12 ---
+Provided Materials
+Southern Company – UA Innovate 2026 Prompt.pptx (MS PowerPoint presentation)
+Southern Company – UA Innovate 2026 – UAInnovateDataset.xlsx (MS Excel file)
+Multiple worksheets (tabs) containing raw data from our device inventory
+One worksheet (tab) containing the Glossary of terms used within the raw data
+--- Slide 13 ---
+Assumptions & Considerations
+Only active / reachable devices should be considered for this effort.
+Values in NA's Device Type field should be transformed into either Switch, Router or Voice Gateway.
+CatCtr
+ and Prime are the sources of truth for access points and wireless LAN controllers.  If any of those device types are duplicated in NA, then 
+CatCtr
+ and Prime should override those records.
+First two characters of host name (aka: name/
+deviceName
+/name/hostname) indicates the State the device is located in.
+Three characters after first two (State) of host name/
+deviceName
+/name/hostname is the site code.
+--- Slide 14 ---
+Judging: What Does Success Look Like?
+Submissions will be judged on the following categories: 
+Visualization, Design & Organization
+Automation
+Business Value
+Functionality / Useability
+Data Accuracy
+Technical Writing & Documentation
+--- Slide 15 ---
+Housekeeping
+Office Hours
+: 
+Saturday, February 28th, 8:00 – 9:00PM CST
+--- Slide 16 ---
+Q & A
+--- Slide 17 ---
+--- Slide 18 ---
