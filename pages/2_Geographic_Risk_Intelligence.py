@@ -2,119 +2,54 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import pydeck as pdk
-import sys
-import os
+import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from src.data_loader import load_data
+from src.data_loader import load_data, apply_global_filters
 from src.dashboard_chatbot import render_dashboard_chatbot
+from src.theme import (
+    inject_theme_css, page_header, section_divider, fmt_currency,
+    COLORS, RISK_COLOR_MAP, RISK_ORDER, PLOTLY_LAYOUT, PLOTLY_CLEAN,
+)
 
 st.set_page_config(page_title="Risk & Geography", page_icon="🌎", layout="wide")
+inject_theme_css()
 
-# ── Executive styling ───────────────────────────────────────────────────────
-st.markdown(
-    """
-    <style>
-    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
-    div[data-testid="stMetric"] {
-        background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
-        border: 1px solid #e2e6ed;
-        border-radius: 12px;
-        padding: 18px 20px 14px 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    div[data-testid="stMetric"] label {
-        font-size: 0.82rem !important;
-        font-weight: 600;
-        color: #5a6577 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-    }
-    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-        font-size: 1.7rem !important;
-        font-weight: 700;
-        color: #1a1f36 !important;
-    }
-    .stPlotlyChart { margin-top: 8px; }
-    hr { border: none; border-top: 1px solid #e8ecf1; margin: 28px 0 20px 0; }
-    h1, h2, h3 { color: #0F172A; font-weight: 700; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ── Data loading ────────────────────────────────────────────────────────────
-DATA_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "dataset", "dashboard_master_data.csv"
-)
+DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "dataset", "dashboard_master_data.csv")
 df = load_data(DATA_PATH)
-
-df["Total_Replacement_Cost"] = pd.to_numeric(
-    df["Total_Replacement_Cost"], errors="coerce"
-).fillna(0)
+df = apply_global_filters(df)
+df["Total_Replacement_Cost"] = pd.to_numeric(df["Total_Replacement_Cost"], errors="coerce").fillna(0)
 df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
 df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
 df["Risk_Level"] = df["Risk_Level"].replace("Healthy", "Low (Healthy)")
 
 main = render_dashboard_chatbot(page_title="Risk & Geography", df=df)
 
-# ── Consistent colour palette ───────────────────────────────────────────────
-RISK_COLOR_MAP = {
-    "Critical (Past EoL)": "#e74c3c",
-    "High (Near EoL)": "#f39c12",
-    "Medium (Approaching EoL)": "#2980b9",
-    "Low (Healthy)": "#27ae60",
-}
 RISK_RGBA = {
     "Critical (Past EoL)": [231, 76, 60, 200],
-    "High (Near EoL)": [243, 156, 18, 200],
-    "Medium (Approaching EoL)": [41, 128, 185, 200],
+    "High (Near EoL)": [240, 168, 48, 200],
+    "Medium (Approaching EoL)": [52, 152, 219, 200],
     "Low (Healthy)": [39, 174, 96, 200],
 }
-RISK_ORDER = list(RISK_COLOR_MAP.keys())
-PLOTLY_CLEAN = {"displayModeBar": False}
-
-
-def fmt_currency(val: float) -> str:
-    if val >= 1_000_000:
-        return f"${val / 1_000_000:,.1f}M"
-    if val >= 1_000:
-        return f"${val / 1_000:,.1f}K"
-    return f"${val:,.0f}"
-
 
 with main:
-    # ═══════════════════════════════════════════════════════════════════════
-    #  PAGE HEADER & FILTERS
-    # ═══════════════════════════════════════════════════════════════════════
-    st.markdown(
-        "<h1 style='text-align:center; color:#1a1f36; margin-bottom:4px;'>"
-        "Geographic Lifecycle Risk Mapping</h1>",
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        "Identify risk hotspots and cluster aging infrastructure for optimized field deployments."
+    page_header(
+        "Geographic Lifecycle Risk Mapping",
+        subtitle="Identify risk hotspots and cluster aging infrastructure for optimized field deployments.",
+        breadcrumb="HOME > GEOGRAPHIC RISK INTELLIGENCE",
     )
     st.markdown("---")
 
     all_states = sorted(df["State"].dropna().unique().tolist())
     selected_states = st.multiselect(
-        "Filter by State",
-        options=all_states,
-        default=[],
+        "Filter by State", options=all_states, default=[],
         help="Leave empty to show all states.",
     )
 
-    if selected_states:
-        df_filtered = df[df["State"].isin(selected_states)].copy()
-    else:
-        df_filtered = df.copy()
+    df_filtered = df[df["State"].isin(selected_states)].copy() if selected_states else df.copy()
 
-    # ═══════════════════════════════════════════════════════════════════════
-    #  INTERACTIVE 3-D RISK MAP
-    # ═══════════════════════════════════════════════════════════════════════
+    # ── 3-D Risk Map ─────────────────────────────────────────────────────
     st.subheader("3-D Risk Map")
-
     map_df = df_filtered.dropna(subset=["Latitude", "Longitude"]).copy()
 
     if map_df.empty:
@@ -125,34 +60,24 @@ with main:
             lambda c: c if isinstance(c, list) else [150, 150, 150, 160]
         )
 
-        view = pdk.data_utils.compute_view(
-            map_df[["Longitude", "Latitude"]], view_proportion=0.9
-        )
+        view = pdk.data_utils.compute_view(map_df[["Longitude", "Latitude"]], view_proportion=0.9)
         view.pitch = 45
         view.bearing = 10
 
         scatter_layer = pdk.Layer(
-            "ScatterplotLayer",
-            data=map_df,
+            "ScatterplotLayer", data=map_df,
             get_position=["Longitude", "Latitude"],
-            get_color="color",
-            get_radius=1200,
-            pickable=True,
-            auto_highlight=True,
+            get_color="color", get_radius=1200,
+            pickable=True, auto_highlight=True,
         )
-
         col_layer = pdk.Layer(
-            "ColumnLayer",
-            data=map_df,
+            "ColumnLayer", data=map_df,
             get_position=["Longitude", "Latitude"],
             get_elevation="Total_Replacement_Cost",
-            elevation_scale=0.5,
-            radius=4000,
-            get_fill_color=[231, 76, 60, 140],
-            pickable=True,
-            auto_highlight=True,
+            elevation_scale=0.5, radius=4000,
+            get_fill_color=[232, 115, 74, 140],
+            pickable=True, auto_highlight=True,
         )
-
         tooltip = {
             "html": (
                 "<b>{Hostname}</b><br/>"
@@ -161,14 +86,15 @@ with main:
                 "State: {State}"
             ),
             "style": {
-                "backgroundColor": "#1a1f36",
+                "backgroundColor": "#1A1F2E",
                 "color": "#ffffff",
                 "fontSize": "13px",
-                "padding": "8px 12px",
-                "borderRadius": "6px",
+                "padding": "10px 14px",
+                "borderRadius": "10px",
+                "boxShadow": "0 8px 24px rgba(0,0,0,0.25)",
+                "fontFamily": "Inter, sans-serif",
             },
         }
-
         deck = pdk.Deck(
             layers=[col_layer, scatter_layer],
             initial_view_state=view,
@@ -177,19 +103,15 @@ with main:
         )
         st.pydeck_chart(deck, use_container_width=True)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    #  RISK CLUSTERING INSIGHT TABLE
-    # ═══════════════════════════════════════════════════════════════════════
-    st.markdown("---")
+    # ── Risk Clustering Table ────────────────────────────────────────────
+    section_divider()
     st.subheader("Risk Clustering — Priority Sites for Field Deployment")
     st.caption(
         "Sites ranked by total replacement cost of Critical and High-risk devices. "
         "Send technicians to the top rows first."
     )
 
-    cluster_mask = df_filtered["Risk_Level"].isin(
-        ["Critical (Past EoL)", "High (Near EoL)"]
-    )
+    cluster_mask = df_filtered["Risk_Level"].isin(["Critical (Past EoL)", "High (Near EoL)"])
     cluster_df = df_filtered[cluster_mask]
 
     if cluster_df.empty:
@@ -204,23 +126,16 @@ with main:
             .reset_index()
             .sort_values("Total_Replacement_Cost", ascending=False)
         )
-
         site_summary["Total_Replacement_Cost"] = site_summary[
             "Total_Replacement_Cost"
         ].apply(lambda v: f"${v:,.2f}")
 
         st.dataframe(
-            site_summary,
-            use_container_width=True,
-            hide_index=True,
+            site_summary, use_container_width=True, hide_index=True,
             column_config={
                 "Site_Code": st.column_config.TextColumn("Site Code"),
                 "State": st.column_config.TextColumn("State"),
-                "High_Risk_Device_Count": st.column_config.NumberColumn(
-                    "High-Risk Devices"
-                ),
-                "Total_Replacement_Cost": st.column_config.TextColumn(
-                    "Total Replacement Cost"
-                ),
+                "High_Risk_Device_Count": st.column_config.NumberColumn("High-Risk Devices"),
+                "Total_Replacement_Cost": st.column_config.TextColumn("Total Replacement Cost"),
             },
         )

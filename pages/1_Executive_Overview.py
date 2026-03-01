@@ -6,94 +6,38 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.data_loader import load_data
 from src.dashboard_chatbot import render_dashboard_chatbot
-
-st.set_page_config(page_title="Executive Overview", page_icon="📈", layout="wide")
-
-# ── Executive styling ───────────────────────────────────────────────────────
-st.markdown(
-    """
-    <style>
-    .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
-    div[data-testid="stMetric"] {
-        background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
-        border: 1px solid #e2e6ed;
-        border-radius: 12px;
-        padding: 18px 20px 14px 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    div[data-testid="stMetric"] label {
-        font-size: 0.82rem !important;
-        font-weight: 600;
-        color: #5a6577 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-    }
-    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-        font-size: 1.7rem !important;
-        font-weight: 700;
-        color: #1a1f36 !important;
-    }
-    .stPlotlyChart { margin-top: 8px; }
-    hr { border: none; border-top: 1px solid #e8ecf1; margin: 28px 0 20px 0; }
-    h1, h2, h3 { color: #0F172A; font-weight: 700; }
-    </style>
-    """,
-    unsafe_allow_html=True,
+from src.theme import (
+    inject_theme_css, page_header, section_divider, fmt_currency,
+    COLORS, RISK_COLOR_MAP, RISK_ORDER, PLOTLY_LAYOUT, PLOTLY_CLEAN, ACCENT_SEQUENCE,
 )
 
-# ── Data loading via shared loader ──────────────────────────────────────────
+st.set_page_config(page_title="Executive Overview", page_icon="📈", layout="wide")
+inject_theme_css()
+
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "dataset", "dashboard_master_data.csv")
 df = load_data(DATA_PATH)
-
 df["Is_Decom"] = df["Is_Decom"].astype(bool)
-df["Total_Replacement_Cost"] = pd.to_numeric(
-    df["Total_Replacement_Cost"], errors="coerce"
-).fillna(0)
+df["Total_Replacement_Cost"] = pd.to_numeric(df["Total_Replacement_Cost"], errors="coerce").fillna(0)
 df["Risk_Level"] = df["Risk_Level"].replace("Healthy", "Low (Healthy)")
 
 main = render_dashboard_chatbot(page_title="Executive Overview", df=df)
 
-# ── Consistent colour palette for Risk_Level ────────────────────────────────
-RISK_COLOR_MAP = {
-    "Low (Healthy)": "#27ae60",
-    "Medium (Approaching EoL)": "#2980b9",
-    "High (Near EoL)": "#f39c12",
-    "Critical (Past EoL)": "#e74c3c",
+SUPPORT_COLORS = {
+    "Unknown / No Data": "#95a5a6",
+    "No Support (Past EoL)": COLORS["crimson"],
+    "Expired Support / At Risk (Past EoS)": COLORS["gold"],
 }
-RISK_ORDER = list(RISK_COLOR_MAP.keys())
-
-PLOTLY_CLEAN = {"displayModeBar": False}
-
-
-def fmt_currency(val: float) -> str:
-    if val >= 1_000_000:
-        return f"${val / 1_000_000:,.1f}M"
-    if val >= 1_000:
-        return f"${val / 1_000:,.1f}K"
-    return f"${val:,.0f}"
-
 
 with main:
-    # ═══════════════════════════════════════════════════════════════════════════
-    #  PAGE HEADER
-    # ═══════════════════════════════════════════════════════════════════════════
-    st.markdown(
-        "<h1 style='text-align:center; color:#1a1f36; margin-bottom:4px;'>"
-        "Network Lifecycle Risk Executive Overview</h1>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        "<p style='text-align:center; color:#7b8794; margin-top:0; font-size:1.05rem;'>"
-        "Southern Company — Enterprise Device Lifecycle Snapshot</p>",
-        unsafe_allow_html=True,
+    page_header(
+        "Network Lifecycle Risk Executive Overview",
+        subtitle="Southern Company — Enterprise Device Lifecycle Snapshot",
+        breadcrumb="HOME > EXECUTIVE OVERVIEW",
     )
     st.markdown("---")
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    #  TABBED LAYOUT
-    # ═══════════════════════════════════════════════════════════════════════════
     tab_exec, tab_lifecycle, tab_alerts = st.tabs(
-        ["Executive Overview", "Lifecycle Status", "Recent Alerts"]
+        ["📊 Executive Overview", "🔄 Lifecycle Status", "🔔 Recent Alerts"]
     )
 
     # ─── TAB 1: EXECUTIVE OVERVIEW ───────────────────────────────────────
@@ -112,16 +56,16 @@ with main:
         k1.metric("Total Active Devices", f"{total_devices:,}")
         k2.metric("Devices Past EoL", f"{past_eol:,}")
         k3.metric("Devices Near EoL", f"{near_eol:,}")
-        k4.metric("Total Replacement Exposure", fmt_currency(total_replacement_exposure))
+        k4.metric("Replacement Exposure", fmt_currency(total_replacement_exposure))
         k5.metric(
-            "Wasted Spend Prevented",
+            "Spend Prevented",
             fmt_currency(wasted_spend_prevented),
             delta=fmt_currency(wasted_spend_prevented),
             delta_color="normal",
             help="Saved by stopping replacements at decommissioned sites",
         )
 
-        st.markdown("---")
+        section_divider()
 
         left, right = st.columns(2)
 
@@ -140,113 +84,86 @@ with main:
                 st.info("No risk-level data available.")
             else:
                 fig_risk = px.bar(
-                    risk_counts,
-                    x="Risk_Level",
-                    y="Count",
-                    color="Risk_Level",
-                    color_discrete_map=RISK_COLOR_MAP,
-                    text="Count",
-                    category_orders={"Risk_Level": RISK_ORDER},
+                    risk_counts, x="Risk_Level", y="Count",
+                    color="Risk_Level", color_discrete_map=RISK_COLOR_MAP,
+                    text="Count", category_orders={"Risk_Level": RISK_ORDER},
                 )
                 fig_risk.update_traces(
-                    textposition="outside", textfont_size=13, marker_line_width=0,
+                    textposition="outside", textfont_size=14,
+                    textfont_color="#1A1F2E",
+                    marker_line_width=0,
                 )
                 fig_risk.update_layout(
-                    showlegend=False,
-                    xaxis_title=None,
+                    **PLOTLY_LAYOUT,
+                    showlegend=False, xaxis_title=None,
                     yaxis_title="Number of Devices",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(l=20, r=20, t=30, b=80),
-                    height=400,
                     xaxis_tickangle=-20,
-                    font=dict(family="Inter, sans-serif"),
                 )
                 st.plotly_chart(fig_risk, use_container_width=True, config=PLOTLY_CLEAN)
 
         with right:
             st.subheader("Top 10 States — High-Risk Devices")
-            high_risk_df = df[
-                df["Risk_Level"].isin(["Critical (Past EoL)", "High (Near EoL)"])
-            ]
+            high_risk_df = df[df["Risk_Level"].isin(["Critical (Past EoL)", "High (Near EoL)"])]
             if high_risk_df.empty:
                 st.info("No high-risk devices found.")
             else:
                 state_counts = (
-                    high_risk_df.groupby("State")
-                    .size()
+                    high_risk_df.groupby("State").size()
                     .reset_index(name="Count")
-                    .sort_values("Count", ascending=False)
-                    .head(10)
+                    .sort_values("Count", ascending=False).head(10)
                     .sort_values("Count", ascending=True)
                 )
                 fig_states = px.bar(
-                    state_counts,
-                    x="Count",
-                    y="State",
-                    orientation="h",
-                    text="Count",
-                    color_discrete_sequence=["#e74c3c"],
+                    state_counts, x="Count", y="State",
+                    orientation="h", text="Count",
+                    color_discrete_sequence=[COLORS["crimson"]],
                 )
                 fig_states.update_traces(
-                    textposition="outside", textfont_size=13, marker_line_width=0,
+                    textposition="outside", textfont_size=14,
+                    textfont_color="#1A1F2E",
+                    marker_line_width=0,
                 )
                 fig_states.update_layout(
+                    **PLOTLY_LAYOUT,
                     showlegend=False,
                     xaxis_title="High-Risk Device Count",
                     yaxis_title=None,
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(l=20, r=40, t=30, b=40),
-                    height=400,
-                    font=dict(family="Inter, sans-serif"),
                 )
                 st.plotly_chart(fig_states, use_container_width=True, config=PLOTLY_CLEAN)
 
-        st.markdown("---")
+        section_divider()
 
         st.subheader("Support Status Distribution")
         support_counts = df["Support_Status"].value_counts().reset_index()
         support_counts.columns = ["Support_Status", "Count"]
 
-        SUPPORT_COLORS = {
-            "Unknown / No Data": "#95a5a6",
-            "No Support (Past EoL)": "#e74c3c",
-            "Expired Support / At Risk (Past EoS)": "#f39c12",
-        }
-
         if support_counts.empty:
             st.info("No support-status data available.")
         else:
             fig_donut = px.pie(
-                support_counts,
-                values="Count",
-                names="Support_Status",
-                hole=0.52,
-                color="Support_Status",
+                support_counts, values="Count", names="Support_Status",
+                hole=0.55, color="Support_Status",
                 color_discrete_map=SUPPORT_COLORS,
             )
             fig_donut.update_traces(
-                textinfo="label+percent",
-                textposition="outside",
-                textfont_size=13,
+                textinfo="label+percent", textposition="outside",
+                textfont_size=13, textfont_color="#1A1F2E",
                 pull=[0.02] * len(support_counts),
                 marker_line_width=0,
             )
             fig_donut.update_layout(
                 showlegend=True,
-                legend=dict(orientation="h", yanchor="top", y=-0.08, xanchor="center", x=0.5),
+                legend=dict(orientation="h", yanchor="top", y=-0.08, xanchor="center", x=0.5,
+                            font=dict(size=12)),
                 margin=dict(l=40, r=40, t=30, b=60),
-                height=420,
-                paper_bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Inter, sans-serif"),
+                height=440, paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter, sans-serif", color=COLORS["dark"]),
             )
             st.plotly_chart(fig_donut, use_container_width=True, config=PLOTLY_CLEAN)
 
     # ─── TAB 2: LIFECYCLE STATUS ────────────────────────────────────────
     with tab_lifecycle:
         st.subheader("Lifecycle Posture")
-
         total = len(df)
         if total > 0:
             low_pct = (df["Risk_Level"] == "Low (Healthy)").sum() / total * 100
@@ -262,31 +179,21 @@ with main:
         c3.metric("Near EoL", f"{high_pct:.1f}%")
         c4.metric("Past EoL (Critical)", f"{crit_pct:.1f}%")
 
-        st.markdown("---")
+        section_divider()
         st.subheader("Device Type Breakdown")
         if "Device Type" in df.columns:
             dtype_risk = (
-                df.groupby(["Device Type", "Risk_Level"])
-                .size()
+                df.groupby(["Device Type", "Risk_Level"]).size()
                 .reset_index(name="Count")
             )
             fig_dt = px.bar(
-                dtype_risk,
-                x="Device Type",
-                y="Count",
-                color="Risk_Level",
-                color_discrete_map=RISK_COLOR_MAP,
+                dtype_risk, x="Device Type", y="Count",
+                color="Risk_Level", color_discrete_map=RISK_COLOR_MAP,
                 category_orders={"Risk_Level": RISK_ORDER},
-                barmode="stack",
-                text="Count",
+                barmode="stack", text="Count",
             )
-            fig_dt.update_layout(
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=20, r=20, t=30, b=60),
-                height=400,
-                font=dict(family="Inter, sans-serif"),
-            )
+            fig_dt.update_traces(textfont_color="#1A1F2E")
+            fig_dt.update_layout(**PLOTLY_LAYOUT)
             st.plotly_chart(fig_dt, use_container_width=True, config=PLOTLY_CLEAN)
         else:
             st.info("Device Type column not found in dataset.")
@@ -294,7 +201,6 @@ with main:
     # ─── TAB 3: RECENT ALERTS ──────────────────────────────────────────
     with tab_alerts:
         st.subheader("System Alerts")
-
         critical_devices = df[df["Risk_Level"] == "Critical (Past EoL)"]
         critical_count = len(critical_devices)
 
@@ -307,9 +213,7 @@ with main:
 
         healthy_count = (df["Risk_Level"] == "Low (Healthy)").sum()
         if healthy_count > 0:
-            st.success(
-                f"**{healthy_count:,}** devices are healthy with no lifecycle concerns."
-            )
+            st.success(f"**{healthy_count:,}** devices are healthy with no lifecycle concerns.")
 
         decom_count = df["Is_Decom"].sum()
         if decom_count > 0:

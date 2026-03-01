@@ -18,9 +18,7 @@ OPEN_KEY = "spark_chat_open"
 
 
 def _resolve_openai_api_key() -> Optional[str]:
-    return (
-        os.getenv("OPENAI_API_KEY")
-    )
+    return os.getenv("OPENAI_API_KEY")
 
 
 def _build_dashboard_context(df: Optional[pd.DataFrame], page_title: str) -> str:
@@ -101,14 +99,12 @@ Available Dashboard Pages (direct the user here if their question relates to the
     )
 
     messages: list = [{"role": "system", "content": system_text}]
-
     for msg in history:
-        # Avoid appending the system instructions as user messages if any got in history somehow
         messages.append({"role": msg["role"], "content": msg["content"]})
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",  # or gpt-4o-mini
+            model="gpt-4o",
             messages=messages,
             temperature=0.7,
         )
@@ -120,51 +116,56 @@ Available Dashboard Pages (direct the user here if their question relates to the
 
 
 def _inject_toggle_css() -> None:
-    """Styles for the chat panel and message bubbles."""
     st.markdown(
         """
         <style>
             .spark-badge {
                 display: inline-block;
-                font-size: 0.68rem;
-                font-weight: 700;
-                letter-spacing: 0.35px;
-                color: #fff;
-                background: linear-gradient(135deg, #2563eb, #0ea5e9);
+                font-size: 0.62rem;
+                font-weight: 800;
+                letter-spacing: 1px;
+                color: #FFFFFF;
+                background: linear-gradient(135deg, #E8734A, #D35400);
                 border-radius: 999px;
-                padding: 0.2rem 0.55rem;
+                padding: 4px 14px;
                 margin-bottom: 0.5rem;
+                text-transform: uppercase;
+                box-shadow: 0 3px 12px rgba(232, 115, 74, 0.3);
             }
             .spark-msg {
                 display: flex;
                 width: 100%;
-                margin: 0.45rem 0;
+                margin: 0.4rem 0;
             }
             .spark-msg.user { justify-content: flex-end; }
             .spark-msg.assistant { justify-content: flex-start; }
             .spark-bubble {
-                max-width: 85%;
+                max-width: 88%;
                 border-radius: 16px;
-                padding: 0.6rem 0.85rem;
-                font-size: 0.88rem;
-                line-height: 1.45;
+                padding: 0.65rem 0.9rem;
+                font-size: 0.86rem;
+                line-height: 1.5;
                 word-break: break-word;
+                font-family: 'Inter', sans-serif;
             }
             .spark-msg.user .spark-bubble {
-                background: #2563EB;
-                color: #fff;
+                background: linear-gradient(135deg, #E8734A, #D35400);
+                color: #FFFFFF;
                 border-bottom-right-radius: 4px;
+                box-shadow: 0 2px 12px rgba(232, 115, 74, 0.2);
             }
             .spark-msg.assistant .spark-bubble {
-                background: #1e293b;
-                color: #e2e8f0;
-                border: 1px solid #334155;
+                background: #FFFFFF;
+                color: #1A1F2E;
+                border: 1px solid #E0E6E3;
                 border-bottom-left-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
             }
             .spark-tip {
-                font-size: 0.75rem;
-                color: #64748b;
+                font-size: 0.72rem;
+                color: #94A3B8;
                 margin-top: 0.3rem;
+                font-weight: 500;
             }
         </style>
         """,
@@ -173,7 +174,6 @@ def _inject_toggle_css() -> None:
 
 
 def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
-    """Renders the chat panel: scrollable messages + Enter-to-send input."""
     history_key = f"spark_chat_history::{page_title}"
     if history_key not in st.session_state:
         st.session_state[history_key] = [
@@ -191,7 +191,6 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
 
     history: List[Dict[str, str]] = st.session_state[history_key]
 
-    # Scrollable message area — fills most of the viewport
     chat_area = st.container(height=420)
     with chat_area:
         for msg in history:
@@ -203,7 +202,6 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
                 unsafe_allow_html=True,
             )
 
-    # Input form — text_input submits on Enter, clear_on_submit resets it
     with st.form(f"spark-form-{page_title}", clear_on_submit=True):
         prompt = st.text_input(
             "Message",
@@ -245,13 +243,6 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
     small chat icon pinned to the far right.
     When the chat panel is open the page is split into [content | chat] columns
     so that all visualisations squeeze naturally.
-
-    Usage in every page::
-
-        main = render_dashboard_chatbot("Page Title", df)
-        with main:
-            st.title("...")
-            # ... all page content ...
     """
     if OPEN_KEY not in st.session_state:
         st.session_state[OPEN_KEY] = False
@@ -264,12 +255,11 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
 
     if is_open:
         hide_sidebar = st.session_state.get("spark_sidebar_hidden", False)
-        
+
         if hide_sidebar:
             st.markdown(
                 """
                 <style>
-                    /* Collapse sidebar */
                     section[data-testid="stSidebar"] {
                         width: 0px !important;
                         min-width: 0px !important;
@@ -277,13 +267,11 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
                         overflow: hidden !important;
                         opacity: 0 !important;
                         padding: 0 !important;
-                        transition: all 0.25s ease;
+                        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
                     }
-                    /* Hide native collapsed control */
                     [data-testid="collapsedControl"] {
                         display: none !important;
                     }
-                    /* Custom Expand Button */
                     [data-testid="stColumn"]:has(#custom-expand-btn) {
                         position: fixed !important;
                         top: 20px !important;
@@ -293,21 +281,20 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
                         flex: none !important;
                     }
                     [data-testid="stColumn"]:has(#custom-expand-btn) button {
-                        background: rgba(30, 41, 59, 0.7) !important;
-                        border: 1px solid #334155 !important;
+                        background: rgba(26, 31, 46, 0.8) !important;
+                        border: 1px solid rgba(255,255,255,0.1) !important;
                         color: white !important;
                         font-weight: bold !important;
                         padding: 5px !important;
-                        border-radius: 6px !important;
-                        transition: all 0.2s ease !important;
-                        display: flex !important;
-                        justify-content: center !important;
+                        border-radius: 10px !important;
+                        transition: all 0.25s ease !important;
+                        backdrop-filter: blur(8px) !important;
                     }
                     [data-testid="stColumn"]:has(#custom-expand-btn) button:hover {
-                        background: #2563eb !important;
-                        border-color: #2563eb !important;
+                        background: #E8734A !important;
+                        border-color: #E8734A !important;
+                        transform: scale(1.05) !important;
                     }
-                    /* Remove height from the container so it doesn't push down content */
                     [data-testid="stHorizontalBlock"]:has(#custom-expand-btn) {
                         height: 0px !important;
                         margin: 0 !important;
@@ -318,8 +305,7 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
                 """,
                 unsafe_allow_html=True,
             )
-            
-            # Invisible column layout just to host the fixed button without messing up main content
+
             btn_container = st.container()
             with btn_container:
                 expand_col, _ = st.columns([1, 10])
@@ -332,16 +318,13 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
         st.markdown(
             """
             <style>
-                /* Animate chat opening */
                 @keyframes slideInChat {
                     0% { opacity: 0; transform: translateX(30px); }
                     100% { opacity: 1; transform: translateX(0); }
                 }
                 [data-testid="stHorizontalBlock"]:has(.spark-badge) > [data-testid="stColumn"]:last-child {
-                    animation: slideInChat 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+                    animation: slideInChat 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
                 }
-                
-                /* Stretch chat column to full viewport height */
                 [data-testid="stHorizontalBlock"]:has(.spark-badge)
                     > [data-testid="stColumn"]:last-child
                     > div > div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -350,6 +333,10 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
                     min-height: calc(100vh - 6rem);
                     max-height: calc(100vh - 6rem);
                     overflow-y: auto;
+                    background: #FFFFFF !important;
+                    border-radius: 18px !important;
+                    border: 1px solid #E0E6E3 !important;
+                    box-shadow: 0 8px 40px rgba(0,0,0,0.08) !important;
                 }
             </style>
             """,
@@ -377,32 +364,32 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
             <style>
                 [data-testid="stColumn"]:has(#spark-button-container) {
                     position: fixed !important;
-                    bottom: 40px !important;
-                    right: 40px !important;
+                    bottom: 36px !important;
+                    right: 36px !important;
                     z-index: 9999 !important;
-                    width: 70px !important;
+                    width: 68px !important;
                     flex: none !important;
                 }
                 [data-testid="stColumn"]:has(#spark-button-container) button {
-                    border-radius: 50% !important;
-                    width: 65px !important;
-                    height: 65px !important;
+                    border-radius: 16px !important;
+                    width: 62px !important;
+                    height: 62px !important;
                     padding: 0 !important;
-                    background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
+                    background: linear-gradient(135deg, #E8734A, #D35400) !important;
                     color: white !important;
                     border: none !important;
-                    box-shadow: 0 0 20px rgba(37, 99, 235, 0.7), 0 0 40px rgba(14, 165, 233, 0.5) !important;
-                    transition: all 0.3s ease !important;
+                    box-shadow: 0 6px 24px rgba(232, 115, 74, 0.4), 0 2px 8px rgba(232, 115, 74, 0.2) !important;
+                    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
                     display: flex !important;
                     align-items: center !important;
                     justify-content: center !important;
                 }
                 [data-testid="stColumn"]:has(#spark-button-container) button:hover {
-                    transform: scale(1.1) !important;
-                    box-shadow: 0 0 30px rgba(37, 99, 235, 0.9), 0 0 50px rgba(14, 165, 233, 0.7) !important;
+                    transform: scale(1.08) translateY(-2px) !important;
+                    box-shadow: 0 10px 36px rgba(232, 115, 74, 0.5), 0 4px 12px rgba(232, 115, 74, 0.3) !important;
                 }
                 [data-testid="stColumn"]:has(#spark-button-container) button p {
-                    font-size: 32px !important;
+                    font-size: 28px !important;
                     margin: 0 !important;
                 }
             </style>
@@ -410,7 +397,7 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
             unsafe_allow_html=True,
         )
         main_container = st.container()
-        
+
         spacer, icon_col = st.columns([1, 1])
         with icon_col:
             st.markdown("<div id='spark-button-container'></div>", unsafe_allow_html=True)
@@ -418,5 +405,5 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
                 st.session_state[OPEN_KEY] = True
                 st.session_state["spark_sidebar_hidden"] = True
                 st.rerun()
-                
+
         return main_container
