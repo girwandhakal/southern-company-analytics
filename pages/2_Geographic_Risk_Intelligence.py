@@ -34,8 +34,13 @@ RISK_RGBA = {
     "Medium (Approaching EoL)": [52, 152, 219, 200],
     "Low (Healthy)": [39, 174, 96, 200],
 }
-# Severity ranking: lower index = higher severity (used for aggregation)
-RISK_SEVERITY = {level: i for i, level in enumerate(RISK_ORDER)}
+# Severity ranking: lower index = higher severity (used for worst-risk aggregation)
+RISK_SEVERITY = {
+    "Critical (Past EoL)": 0,
+    "High (Near EoL)": 1,
+    "Medium (Approaching EoL)": 2,
+    "Low (Healthy)": 3,
+}
 
 with main:
     page_header(
