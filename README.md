@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/assets/southern_company_logo.png" alt="Southern Company" width="280"/>
+  <img src="src/assets/southern-company-logo-0.png" alt="Southern Company" width="280"/>
 </p>
 
 <h1 align="center">Southern Company Fleet Analytics</h1>
