@@ -5,20 +5,21 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
-from dotenv import load_dotenv
 
 BOT_NAME = "Southern Spark"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
-load_dotenv(PROJECT_ROOT / ".env", override=True)
-load_dotenv(PROJECT_ROOT / ".env.local", override=True)
-load_dotenv(override=True)
 
 OPEN_KEY = "spark_chat_open"
 
 
 def _resolve_openai_api_key() -> Optional[str]:
-    return os.getenv("OPENAI_API_KEY")
+    try:
+        return st.secrets["OPENAI_API_KEY"]
+    except KeyError:
+        try:
+            return st.secrets["openai"]["OPENAI_API_KEY"]
+        except KeyError:
+            return None
 
 
 def _build_dashboard_context(df: Optional[pd.DataFrame], page_title: str) -> str:
@@ -57,7 +58,6 @@ def _build_dashboard_context(df: Optional[pd.DataFrame], page_title: str) -> str
     return "\n".join(context_lines)
 
 
-@st.cache_resource(show_spinner=False)
 def _get_openai_client() -> Any:
     try:
         from openai import OpenAI
@@ -75,7 +75,7 @@ def _generate_reply(prompt: str, context: str, history: List[Dict[str, str]]) ->
     client = _get_openai_client()
     if client is None:
         return (
-            "OpenAI API key is not configured or `openai` package is not installed. Add `OPENAI_API_KEY` in `.env.local` "
+            "OpenAI API key is not configured or `openai` package is not installed. Add `OPENAI_API_KEY` in `secrets.toml` "
             "and ensure you have run `pip install openai`."
         )
 

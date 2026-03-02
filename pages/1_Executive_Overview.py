@@ -5,7 +5,6 @@ import sys
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.data_loader import load_data, apply_global_filters
@@ -17,8 +16,6 @@ from src.theme import (
 )
 
 PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..")
-load_dotenv(os.path.join(PROJECT_ROOT, ".env"), override=True)
-load_dotenv(os.path.join(PROJECT_ROOT, ".env.local"), override=True)
 
 st.set_page_config(page_title="Executive Overview", page_icon="📈", layout="wide")
 inject_theme_css()
@@ -140,7 +137,13 @@ FORMATTING RULES:
 
 
 def _generate_report_exec(prompt: str) -> str:
-    api_key = os.getenv("OPENAI_API_KEY")
+    try:
+        api_key = st.secrets["OPENAI_API_KEY"]
+    except KeyError:
+        try:
+            api_key = st.secrets["openai"]["OPENAI_API_KEY"]
+        except KeyError:
+            api_key = None
     if not api_key:
         return _generate_fallback_report_exec()
     try:
