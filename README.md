@@ -18,6 +18,14 @@
 
 ---
 
+<p align="center">
+  <a href="https://southern-company.streamlit.app/" target="_blank">
+    <img src="https://img.shields.io/badge/🚀_Live_Demo-southern--company.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo"/>
+  </a>
+</p>
+
+---
+
 ## Overview
 
 A data-driven analytics dashboard built for **Southern Company** to provide strategic insights into fleet device lifecycle status, geographic risk distribution, financial exposure, and investment planning — all unified under a single, interactive platform.
