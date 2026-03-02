@@ -71,13 +71,15 @@ def _get_openai_client() -> Any:
     return OpenAI(api_key=api_key)
 
 
-def _generate_reply(prompt: str, context: str, history: List[Dict[str, str]]) -> str:
+def _generate_reply(prompt: str, context: str, history: List[Dict[str, str]]):
+    """Generates a reply and yields text chunks as they arrive from OpenAI."""
     client = _get_openai_client()
     if client is None:
-        return (
+        yield (
             "OpenAI API key is not configured or `openai` package is not installed. Add `OPENAI_API_KEY` in `secrets.toml` "
             "and ensure you have run `pip install openai`."
         )
+        return
 
     global_app_context = """
 Available Dashboard Pages (direct the user here if their question relates to these topics):
@@ -92,7 +94,7 @@ Available Dashboard Pages (direct the user here if their question relates to the
     system_text = (
         f"You are {BOT_NAME}, an assistant for Southern Company dashboard users.\n"
         "Only answer questions related to this dashboard, its KPIs, trends, filters, and insights.\n"
-        "Be concise, data-driven, and practical.\n"
+        "Be concise, data-driven, and practical. Format your answers using markdown when necessary.\n"
         "Do NOT re-introduce yourself after the first message — the user already knows who you are.\n\n"
         f"{global_app_context}\n"
         f"Current Page Context:\n{context}"
@@ -107,113 +109,178 @@ Available Dashboard Pages (direct the user here if their question relates to the
             model="gpt-4o",
             messages=messages,
             temperature=0.7,
+            stream=True,
         )
-        text = response.choices[0].message.content
-        return text.strip() if text else "I could not generate a response. Please try again."
+        for chunk in response:
+            if chunk.choices[0].delta.content is not None:
+                yield chunk.choices[0].delta.content
     except Exception as exc:
         import traceback
-        return f"Error contacting OpenAI: {exc}\n\nDetails: {traceback.format_exc()}"
+        yield f"Error contacting OpenAI: {exc}\n\nDetails: {traceback.format_exc()}"
 
 
 def _inject_toggle_css() -> None:
     st.markdown(
         """
         <style>
+            /* Animations */
+            @keyframes slideUpFade {
+                0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+                100% { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            @keyframes pulseGlow {
+                0% { box-shadow: 0 4px 18px rgba(142, 68, 173, 0.4), 0 0 0 0 rgba(142, 68, 173, 0.4); }
+                70% { box-shadow: 0 4px 18px rgba(142, 68, 173, 0.4), 0 0 0 10px rgba(142, 68, 173, 0); }
+                100% { box-shadow: 0 4px 18px rgba(142, 68, 173, 0.4), 0 0 0 0 rgba(142, 68, 173, 0); }
+            }
+            
+            /* Header Badge */
             .spark-badge {
                 display: inline-block;
                 font-size: 0.62rem;
                 font-weight: 800;
-                letter-spacing: 1px;
+                letter-spacing: 1.2px;
                 color: #FFFFFF;
-                background: linear-gradient(135deg, #E8734A, #D35400);
+                background: linear-gradient(135deg, #8E44AD, #6C3483);
                 border-radius: 999px;
                 padding: 4px 14px;
                 margin-bottom: 0.5rem;
                 text-transform: uppercase;
-                box-shadow: 0 3px 12px rgba(232, 115, 74, 0.3);
+                box-shadow: 0 3px 12px rgba(142, 68, 173, 0.3);
             }
+            
+            /* Message Area */
             .spark-msg {
                 display: flex;
                 width: 100%;
-                margin: 0.4rem 0;
+                margin: 0.5rem 0;
+                animation: slideUpFade 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
             }
             .spark-msg.user { justify-content: flex-end; }
             .spark-msg.assistant { justify-content: flex-start; }
+            
+            /* Bubbles */
             .spark-bubble {
                 max-width: 88%;
                 border-radius: 16px;
-                padding: 0.65rem 0.9rem;
-                font-size: 0.86rem;
-                line-height: 1.5;
+                padding: 0.7rem 1rem;
+                font-size: 0.88rem;
+                line-height: 1.55;
                 word-break: break-word;
                 font-family: 'Inter', sans-serif;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
             }
+            .spark-bubble:hover {
+                transform: translateY(-1px);
+            }
+            
+            /* User Bubble (Dark Slate — frosted depth) */
             .spark-msg.user .spark-bubble {
-                background: linear-gradient(135deg, #E8734A, #D35400);
+                background: rgba(26, 31, 46, 0.92);
                 color: #FFFFFF;
+                border: none;
                 border-bottom-right-radius: 4px;
-                box-shadow: 0 2px 12px rgba(232, 115, 74, 0.2);
+                box-shadow: 0 4px 18px rgba(26, 31, 46, 0.18);
+                backdrop-filter: blur(6px);
+                -webkit-backdrop-filter: blur(6px);
             }
+            
+            /* Assistant Bubble (White text-only appearance) */
             .spark-msg.assistant .spark-bubble {
-                background: #FFFFFF;
+                background: transparent;
                 color: #1A1F2E;
-                border: 1px solid #E0E6E3;
-                border-bottom-left-radius: 4px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+                border: none;
+                box-shadow: none;
+                padding-left: 0.2rem; /* small padding adjust for missing border */
             }
+            
+            /* Tip text */
             .spark-tip {
                 font-size: 0.72rem;
                 color: #94A3B8;
-                margin-top: 0.3rem;
+                margin-top: 0.4rem;
                 font-weight: 500;
+                text-align: center;
+                animation: slideUpFade 0.6s ease-out 0.2s both;
             }
-            /* Keep chat controls readable regardless of global theme overrides */
+            
+            /* Close Button Style */
             div[class*="st-key-spark-close-"] button {
-                background: #F8FAFC !important;
+                background: rgba(248, 250, 252, 0.7) !important;
                 color: #1A1F2E !important;
-                border: 1px solid #D8E0DB !important;
+                border: none !important;
+                border-radius: 50% !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+                backdrop-filter: blur(8px) !important;
+                -webkit-backdrop-filter: blur(8px) !important;
+                transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
             }
             div[class*="st-key-spark-close-"] button p {
                 color: #1A1F2E !important;
                 font-weight: 800 !important;
             }
             div[class*="st-key-spark-close-"] button:hover {
-                background: #EEF2F7 !important;
-                color: #1A1F2E !important;
-                border-color: #94A3B8 !important;
+                background: rgba(254, 226, 226, 0.8) !important;
+                color: #E74C3C !important;
+                box-shadow: 0 4px 14px rgba(231, 76, 60, 0.15) !important;
+                transform: rotate(90deg) scale(1.1) !important;
             }
+            
+            /* Standard text input overrides (Form) */
             div[class*="st-key-spark-form-"] .stTextInput > div > div {
-                background: #FFFFFF !important;
-                border: 1px solid #D8E0DB !important;
-                border-radius: 10px !important;
+                background: rgba(255, 255, 255, 0.6) !important;
+                border: none !important;
+                border-radius: 12px !important;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.04) !important;
+                backdrop-filter: blur(8px) !important;
+                -webkit-backdrop-filter: blur(8px) !important;
+                transition: box-shadow 0.2s ease !important;
+            }
+            div[class*="st-key-spark-form-"] .stTextInput > div > div:focus-within {
+                box-shadow: 0 0 0 2px rgba(142, 68, 173, 0.18), 0 4px 16px rgba(0,0,0,0.06) !important;
             }
             div[class*="st-key-spark-form-"] .stTextInput input {
-                background: #FFFFFF !important;
+                background: transparent !important;
                 color: #1A1F2E !important;
                 -webkit-text-fill-color: #1A1F2E !important;
+                padding: 12px !important;
             }
             div[class*="st-key-spark-form-"] .stTextInput input::placeholder {
-                color: #6B7B8D !important;
-                -webkit-text-fill-color: #6B7B8D !important;
+                color: #94A3B8 !important;
+                -webkit-text-fill-color: #94A3B8 !important;
                 opacity: 1 !important;
             }
-            /* Extra-specific targeting for the chat message input */
+            
+            /* Deep targeting for text input (BaseWeb / Streamlit constraints) */
             div[class*="st-key-spark-input-"] [data-baseweb="input"] {
                 background: #FFFFFF !important;
-                border: 1px solid #D8E0DB !important;
-                border-radius: 10px !important;
+                border-radius: 12px !important;
             }
             div[class*="st-key-spark-input-"] input {
-                background: #FFFFFF !important;
                 color: #1A1F2E !important;
                 -webkit-text-fill-color: #1A1F2E !important;
-                caret-color: #1A1F2E !important;
+                caret-color: #8E44AD !important;
             }
-            div[class*="st-key-spark-input-"] input::placeholder {
-                color: #6B7B8D !important;
-                -webkit-text-fill-color: #6B7B8D !important;
-                opacity: 1 !important;
+            
+            /* Send Button Inside the Chat Panel */
+            div[class*="st-key-spark-form-"] .stButton button {
+                background: #1A1F2E !important;
+                color: #FFFFFF !important;
+                border: none !important;
+                border-radius: 12px !important;
+                transition: transform 0.2s ease, box-shadow 0.2s ease !important;
             }
+            div[class*="st-key-spark-form-"] .stButton button p {
+                color: #FFFFFF !important;
+                font-weight: 700 !important;
+                letter-spacing: 0.5px !important;
+            }
+            div[class*="st-key-spark-form-"] .stButton button:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 14px rgba(26, 31, 46, 0.2) !important;
+                background: #272f45 !important;
+            }
+            
             /* Hide the "Press Enter to submit form" text */
             div[class*="st-key-spark-input-"] [data-testid="InputInstructions"] {
                 display: none !important;
@@ -242,7 +309,7 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
 
     history: List[Dict[str, str]] = st.session_state[history_key]
 
-    chat_area = st.container(height=420)
+    chat_area = st.container(height=380)
     with chat_area:
         for msg in history:
             role = "user" if msg.get("role") == "user" else "assistant"
@@ -253,14 +320,18 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
                 unsafe_allow_html=True,
             )
 
+    # Form is now inside the same parent container as the chat area
     with st.form(f"spark-form-{page_title}", clear_on_submit=True):
-        prompt = st.text_input(
-            "Message",
-            placeholder="Type a message and press Enter…",
-            label_visibility="collapsed",
-            key=f"spark-input-{page_title}",
-        )
-        submitted = st.form_submit_button("Send", use_container_width=True)
+        input_col, btn_col = st.columns([5, 1], gap="small")
+        with input_col:
+            prompt = st.text_input(
+                "Message",
+                placeholder="Ask Southern Spark…",
+                label_visibility="collapsed",
+                key=f"spark-input-{page_title}",
+            )
+        with btn_col:
+            submitted = st.form_submit_button("➤", use_container_width=True)
 
     if submitted and prompt and prompt.strip():
         history.append({"role": "user", "content": prompt.strip()})
@@ -270,13 +341,23 @@ def _render_chat_panel(page_title: str, df: Optional[pd.DataFrame]) -> None:
                 f"<div class='spark-bubble'>{escape(prompt.strip())}</div></div>",
                 unsafe_allow_html=True,
             )
-        with st.spinner(f"{BOT_NAME} is thinking…"):
+
+            # Create a placeholder for the assistant's streaming response
+            with st.container():
+                st.markdown("<div class='spark-msg assistant'><div class='spark-bubble'>", unsafe_allow_html=True)
+                assistant_placeholder = st.empty()
+                st.markdown("</div></div>", unsafe_allow_html=True)
+
+        with st.spinner(f"{BOT_NAME} is typing…"):
             try:
                 context = _build_dashboard_context(df, page_title)
-                answer = _generate_reply(prompt.strip(), context, history)
+                stream = _generate_reply(prompt.strip(), context, history)
+                answer = assistant_placeholder.write_stream(stream)
             except Exception as exc:
                 import traceback
                 answer = f"Error contacting OpenAI: {exc}\n\nDetails: {traceback.format_exc()}"
+                assistant_placeholder.markdown(answer)
+
         history.append({"role": "assistant", "content": answer})
         st.session_state[history_key] = history
         st.rerun()
@@ -385,10 +466,47 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
                     min-height: calc(100vh - 6rem);
                     max-height: calc(100vh - 6rem);
                     overflow-y: auto;
-                    background: #FFFFFF !important;
-                    border-radius: 18px !important;
-                    border: 1px solid #E0E6E3 !important;
-                    box-shadow: 0 8px 40px rgba(0,0,0,0.08) !important;
+                    background: rgba(255, 255, 255, 0.45) !important;
+                    border-radius: 20px !important;
+                    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 0 0 0.5px rgba(255,255,255,0.6) !important;
+                    backdrop-filter: blur(20px) saturate(1.4) !important;
+                    -webkit-backdrop-filter: blur(20px) saturate(1.4) !important;
+                }
+                /* Remove Streamlit's default inner container borders */
+                [data-testid="stHorizontalBlock"]:has(.spark-badge)
+                    [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlockBorderWrapper"] {
+                    border: none !important;
+                    box-shadow: none !important;
+                    background: transparent !important;
+                }
+                /* Soften the scrollable chat area border */
+                [data-testid="stHorizontalBlock"]:has(.spark-badge)
+                    [data-testid="stVerticalBlock"] [data-testid="stVerticalBlockBorderWrapper"][data-testid] {
+                    border: 1px solid rgba(0,0,0,0.04) !important;
+                    border-radius: 14px !important;
+                    box-shadow: inset 0 1px 3px rgba(0,0,0,0.03) !important;
+                    background: rgba(255,255,255,0.3) !important;
+                }
+                /* Send button inline styling */
+                div[class*="st-key-spark-form-"] .stFormSubmitButton button {
+                    background: #1A1F2E !important;
+                    color: #FFFFFF !important;
+                    border: none !important;
+                    border-radius: 10px !important;
+                    padding: 0.5rem !important;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+                    min-height: 42px !important;
+                }
+                div[class*="st-key-spark-form-"] .stFormSubmitButton button:hover {
+                    transform: translateY(-1px) !important;
+                    box-shadow: 0 4px 12px rgba(26, 31, 46, 0.2) !important;
+                    background: #272f45 !important;
+                }
+                div[class*="st-key-spark-form-"] .stFormSubmitButton button p {
+                    color: #FFFFFF !important;
+                    font-weight: 700 !important;
+                    font-size: 1.1rem !important;
                 }
             </style>
             """,
@@ -397,7 +515,7 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
 
         main_col, chat_col = st.columns([7, 3], gap="medium")
         with chat_col:
-            with st.container(border=True):
+            with st.container():
                 header_left, header_right = st.columns([6, 1])
                 with header_left:
                     st.markdown(
@@ -427,18 +545,20 @@ def render_dashboard_chatbot(page_title: str, df: Optional[pd.DataFrame] = None)
                     width: 62px !important;
                     height: 62px !important;
                     padding: 0 !important;
-                    background: linear-gradient(135deg, #E8734A, #D35400) !important;
+                    background: linear-gradient(135deg, #8E44AD, #6C3483) !important;
                     color: white !important;
                     border: none !important;
-                    box-shadow: 0 6px 24px rgba(232, 115, 74, 0.4), 0 2px 8px rgba(232, 115, 74, 0.2) !important;
+                    box-shadow: 0 6px 24px rgba(142, 68, 173, 0.4), 0 2px 8px rgba(142, 68, 173, 0.2) !important;
                     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
                     display: flex !important;
                     align-items: center !important;
                     justify-content: center !important;
+                    animation: pulseGlow 3s infinite;
                 }
                 [data-testid="stColumn"]:has(#spark-button-container) button:hover {
                     transform: scale(1.08) translateY(-2px) !important;
-                    box-shadow: 0 10px 36px rgba(232, 115, 74, 0.5), 0 4px 12px rgba(232, 115, 74, 0.3) !important;
+                    box-shadow: 0 10px 36px rgba(142, 68, 173, 0.5), 0 4px 12px rgba(142, 68, 173, 0.3) !important;
+                    animation: none !important;
                 }
                 [data-testid="stColumn"]:has(#spark-button-container) button p {
                     font-size: 28px !important;
