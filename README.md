@@ -146,4 +146,4 @@ This app is deployable to [Streamlit Community Cloud](https://streamlit.io/cloud
 
 This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
 
-© 2026 Girwan Dhakal
+© 2026 Girwan Dhakal & Rahul Mondal
